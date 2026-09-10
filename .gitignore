@@ -1,0 +1,28 @@
+# --- Gradle / Android ---
+.gradle
+**/build/
+local.properties
+.navigation/
+captures/
+*.apk
+*.aar
+*.jks
+*.keystore
+
+# --- IntelliJ / Android Studio ---
+.idea/
+*.iml
+*.iws
+
+# --- iOS (Xcode & KMP Generated) ---
+iosApp/iosApp.xcworkspace/
+iosApp/DerivedData/
+iosApp/Build/
+iosApp/Index/
+iosApp/*.temp
+iosApp/*.moved-aside
+iosApp/*.xcuserstate
+iosApp/xcuserdata/
+
+# --- OS X ---
+.DS_Store
