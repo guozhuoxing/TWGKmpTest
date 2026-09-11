@@ -1,10 +1,64 @@
-# TWG Android Test
-This Repo is the starting point for a test application. You are required to refactor it as specified in the brief obtained as part of the interview process.
-This isn't just about the functionality. We want to see what control you have over your code and how you represent your system and logic, and how elegantly it is done. We want to see your thought process - which means - NO GIANT INITIAL COMMIT. No one writes perfect code that adds the complete behavior for a new feature on the first time.
-If in doubt, impress us!
-## Instructions
-Please either fork or clone this repo, and either provide us a link to your repo, or raise a PR (which will not be merged and will be declined automatically, but will be used to assess your code).
-As detailed on the brief, all new code should be in Kotlin. If you can use any of the new Kotlin features, do!
-All required features should be implemented - which means it both compiles and is to specification.Please add unit tests to your project.
+# Warehouse KMP Test
 
+A Kotlin Multiplatform project built to share product search and detail screen logic across Android and iOS while keeping the UI layer native-friendly and platform-aware.
 
+## Project Overview
+
+This application demonstrates a shared architecture for a warehouse product discovery flow:
+
+- Android app layer for native UI hosting
+- shared Kotlin Multiplatform module for business logic, ViewModels, repositories, and Compose UI
+- iOS app layer using the generated shared framework through a SwiftUI wrapper
+- API integration and data models centralized in the shared module
+
+## Architecture
+
+### Shared Module
+
+The `shared` module contains the cross-platform core of the app:
+
+- `api/` - HTTP client and API configuration
+- `repository/` - data access layer for fetching product data
+- `viewmodel/` - state holders for search and detail screens
+- `ui/` - shared Compose screens and navigation setup
+- `data/` - domain models used by the app
+
+This keeps the product-search flow reusable and testable without duplicating logic across platforms.
+
+### Android Layer
+
+The `androidApp` module hosts the Android entry point and wires the shared Compose UI to the Android runtime. It uses platform-specific ViewModel wrappers to provide lifecycle-aware coroutine scopes.
+
+### iOS Layer
+
+The `iosApp` module contains the SwiftUI app entry and embeds the generated shared Kotlin/Native framework. The shared Kotlin UI is exposed through a `UIViewController` bridge, allowing the same Compose-based logic to run on iOS simulator/device.
+
+## Tech Stack
+
+- Kotlin Multiplatform
+- Jetpack Compose
+- Kotlin Coroutines
+- Ktor for networking
+- Kotlinx Serialization
+- Kamel for image loading
+- SwiftUI + Xcode project generation for iOS
+
+## Getting Started
+
+### Android
+
+```bash
+./gradlew :androidApp:assembleDebug
+```
+
+### iOS Simulator
+
+The project is configured to generate the Xcode project and build the shared framework before running the app in the simulator.
+
+## Notes
+
+The design emphasizes separation of concerns:
+
+- shared business logic stays in Kotlin
+- platform concerns remain at the Android/iOS boundary
+- UI and API logic are structured for maintainability and future extension
