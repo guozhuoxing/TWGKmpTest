@@ -51,8 +51,6 @@ class SearchViewModel(
                 _uiState.value = SearchUiState.Success(result.products)
             } catch (e: CancellationException) {
                 // Ignore cancellations from an in-flight request or scope shutdown.
-            } catch (e: java.util.concurrent.CancellationException) {
-                // Ignore Java cancellation exceptions from underlying request infrastructure.
             } catch (e: Exception) {
                 println("SearchViewModel: Error searching: ${e.message}")
                 _uiState.value = SearchUiState.Error(e.message ?: "Unknown error")
