@@ -11,8 +11,18 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import nz.co.warehouseandroidtest.data.*
 
-class WarehouseApi {
-    private val client = HttpClient {
+class WarehouseApi(engine: io.ktor.client.engine.HttpClientEngine? = null) {
+    private val client = if (engine != null) {
+        HttpClient(engine) {
+            configureClient()
+        }
+    } else {
+        HttpClient {
+            configureClient()
+        }
+    }
+
+    private fun HttpClientConfig<*>.configureClient() {
         install(ContentNegotiation) {
             json(Json {
                 ignoreUnknownKeys = true
