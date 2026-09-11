@@ -14,10 +14,10 @@ import io.kamel.image.KamelImage
 import io.kamel.image.asyncPainterResource
 import nz.co.warehouseandroidtest.data.Product
 import nz.co.warehouseandroidtest.viewmodel.SearchUiState
-import nz.co.warehouseandroidtest.viewmodel.SearchViewModel
+import nz.co.warehouseandroidtest.viewmodel.SearchViewModelContract
 
 @Composable
-fun SearchScreen(viewModel: SearchViewModel, onProductClick: (String) -> Unit) {
+fun SearchScreen(viewModel: SearchViewModelContract, onProductClick: (String) -> Unit) {
     var query by remember { mutableStateOf("") }
     val uiState by viewModel.uiState.collectAsState()
 

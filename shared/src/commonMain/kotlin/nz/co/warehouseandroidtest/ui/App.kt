@@ -10,22 +10,28 @@ import androidx.navigation.compose.rememberNavController
 import nz.co.warehouseandroidtest.api.WarehouseApi
 import nz.co.warehouseandroidtest.repository.WarehouseRepository
 import nz.co.warehouseandroidtest.viewmodel.ProductDetailViewModel
+import nz.co.warehouseandroidtest.viewmodel.ProductDetailViewModelContract
 import nz.co.warehouseandroidtest.viewmodel.SearchViewModel
+import nz.co.warehouseandroidtest.viewmodel.SearchViewModelContract
 
 @Composable
-fun App() {
+fun App(
+    searchViewModel: SearchViewModelContract? = null,
+    productDetailViewModel: ProductDetailViewModelContract? = null
+) {
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
-    
+
     val api = remember { WarehouseApi() }
     val repository = remember { WarehouseRepository(api) }
-    
+    val resolvedSearchViewModel = searchViewModel ?: remember { SearchViewModel(repository, scope) }
+    val resolvedProductDetailViewModel = productDetailViewModel ?: remember { ProductDetailViewModel(repository, scope) }
+
     MaterialTheme {
         NavHost(navController = navController, startDestination = "search") {
             composable("search") {
-                val viewModel = remember { SearchViewModel(repository, scope) }
                 SearchScreen(
-                    viewModel = viewModel,
+                    viewModel = resolvedSearchViewModel,
                     onProductClick = { productId ->
                         navController.navigate("detail/$productId")
                     }
@@ -33,9 +39,8 @@ fun App() {
             }
             composable("detail/{productId}") { backStackEntry ->
                 val productId = backStackEntry.arguments?.getString("productId") ?: ""
-                val viewModel = remember { ProductDetailViewModel(repository, scope) }
                 ProductDetailScreen(
-                    viewModel = viewModel,
+                    viewModel = resolvedProductDetailViewModel,
                     productId = productId,
                     onBack = { navController.popBackStack() }
                 )

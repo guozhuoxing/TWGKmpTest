@@ -17,15 +17,20 @@ import nz.co.warehouseandroidtest.repository.WarehouseRepository
  * The view model exposes a single UI state stream so the screen can render loading, success, and
  * error states consistently.
  */
+interface ProductDetailViewModelContract {
+    val uiState: StateFlow<ProductDetailUiState>
+    fun loadProductDetail(productId: String)
+}
+
 class ProductDetailViewModel(
     private val repository: WarehouseRepository, 
     private val scope: CoroutineScope,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
-) {
+) : ProductDetailViewModelContract {
     private val _uiState = MutableStateFlow<ProductDetailUiState>(ProductDetailUiState.Idle)
-    val uiState: StateFlow<ProductDetailUiState> = _uiState.asStateFlow()
+    override val uiState: StateFlow<ProductDetailUiState> = _uiState.asStateFlow()
 
-    fun loadProductDetail(productId: String) {
+    override fun loadProductDetail(productId: String) {
         try {
             _uiState.value = ProductDetailUiState.Loading
             val product = runBlocking {

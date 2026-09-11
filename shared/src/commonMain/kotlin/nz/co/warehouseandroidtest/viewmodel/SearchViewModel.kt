@@ -17,15 +17,20 @@ import nz.co.warehouseandroidtest.repository.WarehouseRepository
  * It exposes UI state updates based on the repository response and keeps the screen logic free from
  * network details.
  */
+interface SearchViewModelContract {
+    val uiState: StateFlow<SearchUiState>
+    fun search(query: String)
+}
+
 class SearchViewModel(
     private val repository: WarehouseRepository,
     private val scope: CoroutineScope,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
-) {
+) : SearchViewModelContract {
     private val _uiState = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
-    val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
+    override val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
-    fun search(query: String) {
+    override fun search(query: String) {
         println("SearchViewModel: Searching for $query")
         if (query.isBlank()) return
         

@@ -12,10 +12,10 @@ import androidx.compose.ui.unit.dp
 import io.kamel.image.KamelImage
 import io.kamel.image.asyncPainterResource
 import nz.co.warehouseandroidtest.viewmodel.ProductDetailUiState
-import nz.co.warehouseandroidtest.viewmodel.ProductDetailViewModel
+import nz.co.warehouseandroidtest.viewmodel.ProductDetailViewModelContract
 
 @Composable
-fun ProductDetailScreen(viewModel: ProductDetailViewModel, productId: String, onBack: () -> Unit) {
+fun ProductDetailScreen(viewModel: ProductDetailViewModelContract, productId: String, onBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
 
     LaunchedEffect(productId) {
