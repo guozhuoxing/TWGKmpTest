@@ -171,4 +171,73 @@ class SearchViewModelTest {
         val state = viewModel.uiState.value
         assertTrue(state is SearchUiState.Error, "Expected Error state but was ${state::class.simpleName}")
     }
+
+    @Test
+    fun search_whenRepositoryThrowsTimeout_shouldEmitFriendlyErrorMessage() = runBlocking {
+        val mockEngine = MockEngine { _ ->
+            throw RuntimeException("Request timed out")
+        }
+
+        val viewModel = SearchViewModel(
+            WarehouseRepository(WarehouseApi(mockEngine)),
+            this
+        )
+
+        viewModel.search("iphone")
+
+        withTimeout(5000L) {
+            while (viewModel.uiState.value !is SearchUiState.Error) {
+                delay(10)
+            }
+        }
+
+        val state = viewModel.uiState.value
+        assertTrue(state is SearchUiState.Error, "Expected Error state but was ${state::class.simpleName}")
+        assertEquals(
+            "The request timed out. Please try again in a moment.",
+            (state as SearchUiState.Error).message
+        )
+    }
+
+    @Test
+    fun search_error_showsError_and_loadingCleared() = runBlocking {
+        val responseGate = CompletableDeferred<Unit>()
+        val mockEngine = MockEngine { _ ->
+            responseGate.await()
+            respond(
+                content = "Error",
+                status = HttpStatusCode.InternalServerError
+            )
+        }
+
+        val viewModel = SearchViewModel(
+            WarehouseRepository(WarehouseApi(mockEngine)),
+            this
+        )
+
+        viewModel.search("milk")
+
+        // Wait until Loading is emitted
+        withTimeout(5000L) {
+            while (viewModel.uiState.value !is SearchUiState.Loading) {
+                delay(10)
+            }
+            assertTrue(viewModel.uiState.value is SearchUiState.Loading)
+        }
+
+        // Trigger the failing response and wait for Error
+        responseGate.complete(Unit)
+
+        withTimeout(5000L) {
+            while (viewModel.uiState.value !is SearchUiState.Error) {
+                delay(10)
+            }
+        }
+
+        val finalState = viewModel.uiState.value
+        assertTrue(finalState is SearchUiState.Error)
+        // Ensure loading is no longer the current state
+        assertTrue(finalState !is SearchUiState.Loading)
+    }
+
 }

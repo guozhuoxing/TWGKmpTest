@@ -24,6 +24,10 @@ class PlatformSearchViewModel(
     override fun search(query: String) {
         delegate.search(query)
     }
+
+    override fun retryLastSearch() {
+        delegate.retryLastSearch()
+    }
 }
 
 /**

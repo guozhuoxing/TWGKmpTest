@@ -9,6 +9,6 @@ package nz.co.warehouseandroidtest.api
 data class ApiConfig(
     val baseUrl: String = "https://legacy-apim.twg.co.nz/twgCSharpTest",
     val subscriptionKey: String = "89c018e2116048938592463c3a94fc66",
-    val timeoutMillis: Long = 30_000L,
+    val timeoutMillis: Long = 10_000L,
     val enableLogging: Boolean = false
 )

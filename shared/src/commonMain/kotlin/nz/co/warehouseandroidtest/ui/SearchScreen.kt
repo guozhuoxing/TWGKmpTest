@@ -77,7 +77,7 @@ fun SearchScreen(viewModel: SearchViewModelContract, onProductClick: (String) ->
                     }
                 }
             }
-            is SearchUiState.Error -> Text("Error: ${state.message}", color = MaterialTheme.colors.error)
+            is SearchUiState.Error -> SearchErrorView(message = state.message)
             else -> Text("Enter a search term to begin.", color = MaterialTheme.colors.onBackground.copy(alpha = 0.7f))
         }
     }
@@ -93,6 +93,39 @@ private fun SearchLoadingView(modifier: Modifier = Modifier) {
             CircularProgressIndicator(color = MaterialTheme.colors.primary)
             Spacer(modifier = Modifier.height(WarehouseSpacing.sm))
             Text("Loading products...", color = MaterialTheme.colors.onBackground)
+        }
+    }
+}
+
+@Composable
+private fun SearchErrorView(message: String) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = WarehouseSpacing.md),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            shape = RoundedCornerShape(WarehouseSpacing.md),
+            color = MaterialTheme.colors.surface,
+            elevation = WarehouseSpacing.xxs
+        ) {
+            Column(
+                modifier = Modifier.padding(WarehouseSpacing.md),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "Something went wrong",
+                    style = MaterialTheme.typography.h6,
+                    color = MaterialTheme.colors.onSurface
+                )
+                Spacer(modifier = Modifier.height(WarehouseSpacing.xs))
+                Text(
+                    text = message,
+                    color = MaterialTheme.colors.onSurface.copy(alpha = 0.7f),
+                    style = MaterialTheme.typography.body2
+                )
+            }
         }
     }
 }

@@ -10,7 +10,11 @@ import nz.co.warehouseandroidtest.data.SearchResult
  * It keeps the UI and ViewModels independent from the underlying HTTP client by wrapping API calls
  * behind high-level methods such as product search and detail lookup.
  */
-class WarehouseRepository(private val api: WarehouseApi) {
+class WarehouseRepository(private var api: WarehouseApi) {
+    fun resetClient() {
+        api = WarehouseApi(config = api.config)
+    }
+
     suspend fun searchProducts(query: String, start: Int = 0): SearchResult {
         return api.searchProducts(query, start)
     }

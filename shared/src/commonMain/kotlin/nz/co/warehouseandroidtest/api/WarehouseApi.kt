@@ -20,8 +20,8 @@ import nz.co.warehouseandroidtest.data.*
  * inject or override these values through ApiConfig when needed.
  */
 class WarehouseApi(
-    engine: io.ktor.client.engine.HttpClientEngine? = null,
-    private val config: ApiConfig = ApiConfig()
+    val engine: io.ktor.client.engine.HttpClientEngine? = null,
+    val config: ApiConfig = ApiConfig()
 ) {
     private val client = if (engine != null) {
         HttpClient(engine) {
