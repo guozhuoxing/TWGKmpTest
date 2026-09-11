@@ -11,6 +11,12 @@ import kotlinx.coroutines.runBlocking
 import nz.co.warehouseandroidtest.data.Product
 import nz.co.warehouseandroidtest.repository.WarehouseRepository
 
+/**
+ * Handles search state for the product search screen.
+ *
+ * It exposes UI state updates based on the repository response and keeps the screen logic free from
+ * network details.
+ */
 class SearchViewModel(
     private val repository: WarehouseRepository,
     private val scope: CoroutineScope,
@@ -41,6 +47,11 @@ class SearchViewModel(
     }
 }
 
+/**
+ * UI states exposed by the search flow.
+ *
+ * The ViewModel transitions through Idle -> Loading -> Success/Error depending on repository result.
+ */
 sealed class SearchUiState {
     object Idle : SearchUiState()
     object Loading : SearchUiState()

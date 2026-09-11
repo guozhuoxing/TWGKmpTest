@@ -10,6 +10,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 
+/**
+ * Ensures the repository correctly maps API responses into domain models.
+ */
 class WarehouseRepositoryTest {
 
     @Test

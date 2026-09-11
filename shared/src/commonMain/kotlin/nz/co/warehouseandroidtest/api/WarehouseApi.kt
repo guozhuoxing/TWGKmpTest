@@ -11,6 +11,12 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.Json
 import nz.co.warehouseandroidtest.data.*
 
+/**
+ * Access point for warehouse product APIs.
+ *
+ * This client centralizes HTTP configuration, authentication headers, and the product search/detail
+ * requests used by the shared KMP layer.
+ */
 class WarehouseApi(engine: io.ktor.client.engine.HttpClientEngine? = null) {
     private val client = if (engine != null) {
         HttpClient(engine) {

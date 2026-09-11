@@ -11,6 +11,12 @@ import kotlinx.coroutines.runBlocking
 import nz.co.warehouseandroidtest.data.Product
 import nz.co.warehouseandroidtest.repository.WarehouseRepository
 
+/**
+ * Handles the product detail screen state and delegates loading to the repository.
+ *
+ * The view model exposes a single UI state stream so the screen can render loading, success, and
+ * error states consistently.
+ */
 class ProductDetailViewModel(
     private val repository: WarehouseRepository, 
     private val scope: CoroutineScope,
@@ -40,6 +46,11 @@ class ProductDetailViewModel(
     }
 }
 
+/**
+ * UI states for the product detail flow.
+ *
+ * It models the screen lifecycle from initial idle to final success or error rendering.
+ */
 sealed class ProductDetailUiState {
     object Idle : ProductDetailUiState()
     object Loading : ProductDetailUiState()

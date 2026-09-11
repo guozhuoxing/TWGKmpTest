@@ -12,6 +12,9 @@ import nz.co.warehouseandroidtest.viewmodel.SearchUiState
 import nz.co.warehouseandroidtest.viewmodel.SearchViewModel
 import kotlin.test.*
 
+/**
+ * Verifies the search ViewModel behaviour for success, error, and edge-case inputs.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
 

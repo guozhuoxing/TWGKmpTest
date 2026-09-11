@@ -18,6 +18,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+/**
+ * Verifies the product detail ViewModel behaviour under success, missing-product, and failure cases.
+ */
 @OptIn(ExperimentalCoroutinesApi::class)
 class ProductDetailViewModelTest {
     private val testDispatcher = StandardTestDispatcher()
