@@ -35,14 +35,6 @@ class WarehouseApi(engine: io.ktor.client.engine.HttpClientEngine? = null) {
                 useAlternativeNames = false
             })
         }
-        install(Logging) {
-            level = LogLevel.ALL
-            logger = object : Logger {
-                override fun log(message: String) {
-                    println("Ktor: $message")
-                }
-            }
-        }
     }
 
     private val baseUrl = "https://legacy-apim.twg.co.nz/twgCSharpTest"
