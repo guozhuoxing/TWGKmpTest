@@ -51,6 +51,8 @@ class ProductDetailViewModel(
                 }
             } catch (e: CancellationException) {
                 // Ignore cancellations from an in-flight request.
+            } catch (e: java.util.concurrent.CancellationException) {
+                // Ignore Java cancellation exceptions from underlying request infrastructure.
             } catch (e: Exception) {
                 _uiState.value = ProductDetailUiState.Error(e.message ?: "Unknown error")
             }
