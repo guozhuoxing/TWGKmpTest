@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import nz.co.warehouseandroidtest.data.Product
+import nz.co.warehouseandroidtest.logging.AppLogger
 import nz.co.warehouseandroidtest.repository.WarehouseRepository
 
 /**
@@ -40,19 +41,19 @@ class SearchViewModel(
     }
 
     override fun search(query: String) {
-        println("SearchViewModel: Searching for $query")
+        AppLogger.debug("SearchViewModel: Searching for $query")
         if (query.isBlank()) return
 
         activeScope.launch(dispatcher) {
             try {
                 _uiState.value = SearchUiState.Loading
                 val result = repository.searchProducts(query)
-                println("SearchViewModel: Found ${result.products.size} products")
+                AppLogger.debug("SearchViewModel: Found ${result.products.size} products")
                 _uiState.value = SearchUiState.Success(result.products)
             } catch (e: CancellationException) {
                 // Ignore cancellations from an in-flight request or scope shutdown.
             } catch (e: Exception) {
-                println("SearchViewModel: Error searching: ${e.message}")
+                AppLogger.error("SearchViewModel: Error searching: ${e.message}")
                 _uiState.value = SearchUiState.Error(e.message ?: "Unknown error")
             }
         }
