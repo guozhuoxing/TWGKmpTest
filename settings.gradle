@@ -12,6 +12,6 @@ dependencyResolutionManagement {
         maven { url 'https://jitpack.io' }
     }
 }
-rootProject.name = "twg-android-test"
-include ':app'
+rootProject.name = "WarehouseKmpTest"
+include ':androidApp'
 include ':shared'
