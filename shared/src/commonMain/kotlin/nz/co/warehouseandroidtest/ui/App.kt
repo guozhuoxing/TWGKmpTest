@@ -7,6 +7,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import nz.co.warehouseandroidtest.api.ApiConfig
 import nz.co.warehouseandroidtest.api.WarehouseApi
 import nz.co.warehouseandroidtest.repository.WarehouseRepository
 import nz.co.warehouseandroidtest.viewmodel.ProductDetailViewModel
@@ -22,7 +23,7 @@ fun App(
     val navController = rememberNavController()
     val scope = rememberCoroutineScope()
 
-    val api = remember { WarehouseApi() }
+    val api = remember { WarehouseApi(config = ApiConfig()) }
     val repository = remember { WarehouseRepository(api) }
     val resolvedSearchViewModel = searchViewModel ?: remember { SearchViewModel(repository, scope) }
     val resolvedProductDetailViewModel = productDetailViewModel ?: remember { ProductDetailViewModel(repository, scope) }

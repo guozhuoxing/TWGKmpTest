@@ -2,6 +2,7 @@ package nz.co.warehouseandroidtest.api
 
 import io.ktor.client.*
 import io.ktor.client.call.*
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.*
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
@@ -14,10 +15,14 @@ import nz.co.warehouseandroidtest.data.*
 /**
  * Access point for warehouse product APIs.
  *
- * This client centralizes HTTP configuration, authentication headers, and the product search/detail
- * requests used by the shared KMP layer.
+ * The HTTP configuration is intentionally separated from the business logic so the shared layer does
+ * not depend on specific endpoint values or platform environment details. The portable app code can
+ * inject or override these values through ApiConfig when needed.
  */
-class WarehouseApi(engine: io.ktor.client.engine.HttpClientEngine? = null) {
+class WarehouseApi(
+    engine: io.ktor.client.engine.HttpClientEngine? = null,
+    private val config: ApiConfig = ApiConfig()
+) {
     private val client = if (engine != null) {
         HttpClient(engine) {
             configureClient()
@@ -35,24 +40,34 @@ class WarehouseApi(engine: io.ktor.client.engine.HttpClientEngine? = null) {
                 useAlternativeNames = false
             })
         }
+
+        if (config.enableLogging) {
+            install(Logging) {
+                logger = Logger.DEFAULT
+                level = LogLevel.INFO
+            }
+        }
+
+        install(HttpTimeout) {
+            requestTimeoutMillis = config.timeoutMillis
+            connectTimeoutMillis = config.timeoutMillis
+            socketTimeoutMillis = config.timeoutMillis
+        }
     }
 
-    private val baseUrl = "https://legacy-apim.twg.co.nz/twgCSharpTest"
-    private val subscriptionKey = "89c018e2116048938592463c3a94fc66"
-
     suspend fun searchProducts(query: String, start: Int = 0, limit: Int = 20): SearchResult {
-        return client.get("$baseUrl/Search.json") {
+        return client.get("${config.baseUrl}/Search.json") {
             parameter("Search", query)
             parameter("Start", start)
             parameter("Limit", limit)
-            header("Ocp-Apim-Subscription-Key", subscriptionKey)
+            header("Ocp-Apim-Subscription-Key", config.subscriptionKey)
         }.body()
     }
 
     suspend fun getProductDetail(productId: String): ProductDetailResponse {
-        return client.get("$baseUrl/Product.json") {
+        return client.get("${config.baseUrl}/Product.json") {
             parameter("ProductId", productId)
-            header("Ocp-Apim-Subscription-Key", subscriptionKey)
+            header("Ocp-Apim-Subscription-Key", config.subscriptionKey)
         }.body()
     }
 }
