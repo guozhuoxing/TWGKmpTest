@@ -13,10 +13,18 @@ kotlin {
             }
         }
     }
-    
+
     iosX64()
     iosArm64()
     iosSimulatorArm64()
+
+    def iosFrameworkTargets = [iosX64(), iosArm64(), iosSimulatorArm64()]
+    iosFrameworkTargets.each { iosTarget ->
+        iosTarget.binaries.framework {
+            baseName = "shared"
+            isStatic = false
+        }
+    }
 
     sourceSets {
         commonMain.dependencies {

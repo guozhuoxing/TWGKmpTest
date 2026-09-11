@@ -23,6 +23,9 @@ iosApp/*.temp
 iosApp/*.moved-aside
 iosApp/*.xcuserstate
 iosApp/xcuserdata/
+iosApp/iosApp.xcodeproj/project.xcworkspace/
+iosApp/iosApp.xcodeproj/xcuserdata/
+iosApp/iosApp.xcodeproj/**/*.xcuserstate
 
 # --- OS X ---
 .DS_Store
