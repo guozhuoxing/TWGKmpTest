@@ -1,15 +1,21 @@
 package nz.co.warehouseandroidtest.viewmodel
 
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import nz.co.warehouseandroidtest.data.Product
 import nz.co.warehouseandroidtest.repository.WarehouseRepository
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 
-class SearchViewModel(private val repository: WarehouseRepository, private val scope: CoroutineScope) {
+class SearchViewModel(
+    private val repository: WarehouseRepository,
+    private val scope: CoroutineScope,
+    private val dispatcher: CoroutineDispatcher = Dispatchers.Default
+) {
     private val _uiState = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
     val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
 
@@ -17,17 +23,20 @@ class SearchViewModel(private val repository: WarehouseRepository, private val s
         println("SearchViewModel: Searching for $query")
         if (query.isBlank()) return
         
-        scope.launch(Dispatchers.Default) {
+        try {
             _uiState.value = SearchUiState.Loading
-            try {
-                val result = repository.searchProducts(query)
-                println("SearchViewModel: Found ${result.products.size} products")
-                _uiState.value = SearchUiState.Success(result.products)
-            } catch (e: Exception) {
-                println("SearchViewModel: Error searching: ${e.message}")
-                e.printStackTrace()
-                _uiState.value = SearchUiState.Error(e.message ?: "Unknown error")
+            val result = runBlocking {
+                repository.searchProducts(query)
             }
+            println("SearchViewModel: Found ${result.products.size} products")
+            _uiState.value = SearchUiState.Success(result.products)
+        } catch (e: CancellationException) {
+            // Ignore cancellations from an in-flight request or scope shutdown.
+        } catch (e: java.util.concurrent.CancellationException) {
+            // Ignore Java cancellation exceptions from underlying request infrastructure.
+        } catch (e: Exception) {
+            println("SearchViewModel: Error searching: ${e.message}")
+            _uiState.value = SearchUiState.Error(e.message ?: "Unknown error")
         }
     }
 }
