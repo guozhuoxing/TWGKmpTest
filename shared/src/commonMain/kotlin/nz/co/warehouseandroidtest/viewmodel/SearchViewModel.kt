@@ -25,6 +25,13 @@ interface SearchViewModelContract {
     fun search(query: String)
 }
 
+/**
+ * Shared search ViewModel for the product lookup flow.
+ *
+ * It keeps the repository interaction and state transitions in one place so the UI layer can remain
+ * focused on rendering and user interaction. The optional scope is provided by platform adapters when
+ * the app is running under Android lifecycle-aware ViewModels.
+ */
 class SearchViewModel(
     private val repository: WarehouseRepository,
     private val scope: CoroutineScope? = null,
@@ -66,8 +73,15 @@ class SearchViewModel(
  * The ViewModel transitions through Idle -> Loading -> Success/Error depending on repository result.
  */
 sealed class SearchUiState {
+    /** Initial state before any search request is started. */
     object Idle : SearchUiState()
+
+    /** Indicates that the current query is being fetched from the repository. */
     object Loading : SearchUiState()
+
+    /** Successful search response containing matching products. */
     data class Success(val products: List<Product>) : SearchUiState()
+
+    /** Search failure state with a human-readable error message. */
     data class Error(val message: String) : SearchUiState()
 }
