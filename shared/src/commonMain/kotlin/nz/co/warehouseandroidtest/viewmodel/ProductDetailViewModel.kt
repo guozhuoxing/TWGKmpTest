@@ -4,10 +4,12 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.launch
 import nz.co.warehouseandroidtest.data.Product
 import nz.co.warehouseandroidtest.repository.WarehouseRepository
 
@@ -23,30 +25,35 @@ interface ProductDetailViewModelContract {
 }
 
 class ProductDetailViewModel(
-    private val repository: WarehouseRepository, 
-    private val scope: CoroutineScope,
+    private val repository: WarehouseRepository,
+    private val scope: CoroutineScope? = null,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ProductDetailViewModelContract {
     private val _uiState = MutableStateFlow<ProductDetailUiState>(ProductDetailUiState.Idle)
     override val uiState: StateFlow<ProductDetailUiState> = _uiState.asStateFlow()
+    private val activeScope = scope ?: CoroutineScope(SupervisorJob() + dispatcher)
+
+    fun clear() {
+        if (scope == null) {
+            activeScope.cancel()
+        }
+    }
 
     override fun loadProductDetail(productId: String) {
-        try {
-            _uiState.value = ProductDetailUiState.Loading
-            val product = runBlocking {
-                repository.getProductDetail(productId)
+        activeScope.launch(dispatcher) {
+            try {
+                _uiState.value = ProductDetailUiState.Loading
+                val product = repository.getProductDetail(productId)
+                if (product != null) {
+                    _uiState.value = ProductDetailUiState.Success(product)
+                } else {
+                    _uiState.value = ProductDetailUiState.Error("Product not found")
+                }
+            } catch (e: CancellationException) {
+                // Ignore cancellations from an in-flight request.
+            } catch (e: Exception) {
+                _uiState.value = ProductDetailUiState.Error(e.message ?: "Unknown error")
             }
-            if (product != null) {
-                _uiState.value = ProductDetailUiState.Success(product)
-            } else {
-                _uiState.value = ProductDetailUiState.Error("Product not found")
-            }
-        } catch (e: CancellationException) {
-            // Ignore cancellations from an in-flight request.
-        } catch (e: java.util.concurrent.CancellationException) {
-            // Ignore Java cancellation exceptions from underlying request infrastructure.
-        } catch (e: Exception) {
-            _uiState.value = ProductDetailUiState.Error(e.message ?: "Unknown error")
         }
     }
 }

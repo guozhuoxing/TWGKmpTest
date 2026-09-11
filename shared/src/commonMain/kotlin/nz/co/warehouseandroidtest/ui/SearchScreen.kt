@@ -1,13 +1,16 @@
 package nz.co.warehouseandroidtest.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import io.kamel.image.KamelImage
@@ -37,17 +40,51 @@ fun SearchScreen(viewModel: SearchViewModelContract, onProductClick: (String) ->
         Spacer(modifier = Modifier.height(16.dp))
 
         when (val state = uiState) {
-            is SearchUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+            is SearchUiState.Loading -> SearchLoadingView(modifier = Modifier.fillMaxSize())
             is SearchUiState.Success -> {
-                LazyColumn {
-                    items(state.products) { product ->
-                        ProductItem(product, onProductClick)
+                if (state.products.isEmpty()) {
+                    Text("No products found for this search.", modifier = Modifier.padding(top = 16.dp))
+                } else {
+                    LazyColumn {
+                        items(state.products) { product ->
+                            ProductItem(product, onProductClick)
+                        }
                     }
                 }
             }
             is SearchUiState.Error -> Text("Error: ${state.message}", color = MaterialTheme.colors.error)
             else -> Text("Enter a search term to begin.")
         }
+    }
+}
+
+@Composable
+private fun SearchLoadingView(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator()
+            Spacer(modifier = Modifier.height(12.dp))
+            Text("Loading products...")
+        }
+    }
+}
+
+@Composable
+private fun DefaultProductImage(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colors.surface.copy(alpha = 0.7f)),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = "No Image",
+            color = MaterialTheme.colors.onSurface.copy(alpha = 0.45f),
+            style = MaterialTheme.typography.caption
+        )
     }
 }
 
@@ -61,15 +98,22 @@ fun ProductItem(product: Product, onClick: (String) -> Unit) {
         elevation = 2.dp
     ) {
         Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (!product.productImageUrl.isNullOrEmpty()) {
+            val imageUrl = product.imageUrls.firstOrNull() ?: product.productImageUrl
+            val imageModifier = Modifier.size(64.dp)
+            if (!imageUrl.isNullOrEmpty()) {
                 KamelImage(
-                    resource = asyncPainterResource(data = product.productImageUrl),
+                    resource = asyncPainterResource(data = imageUrl),
                     contentDescription = product.productName,
-                    modifier = Modifier.size(64.dp),
-                    contentScale = ContentScale.Fit
+                    modifier = imageModifier,
+                    contentScale = ContentScale.Fit,
+                    onFailure = {
+                        DefaultProductImage(modifier = imageModifier)
+                    }
                 )
-                Spacer(modifier = Modifier.width(16.dp))
+            } else {
+                DefaultProductImage(modifier = imageModifier)
             }
+            Spacer(modifier = Modifier.width(16.dp))
             Column {
                 Text(text = product.productName ?: "Unknown", style = MaterialTheme.typography.h6)
                 Text(text = "Price: $${product.priceInfo?.price ?: 0.0}", style = MaterialTheme.typography.body1)
