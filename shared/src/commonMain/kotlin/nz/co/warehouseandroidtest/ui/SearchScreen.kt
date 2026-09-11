@@ -11,11 +11,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import io.kamel.image.KamelImage
 import io.kamel.image.asyncPainterResource
 import nz.co.warehouseandroidtest.data.Product
+import nz.co.warehouseandroidtest.ui.theme.WarehouseSpacing
 import nz.co.warehouseandroidtest.viewmodel.SearchUiState
 import nz.co.warehouseandroidtest.viewmodel.SearchViewModelContract
 
@@ -24,28 +26,51 @@ fun SearchScreen(viewModel: SearchViewModelContract, onProductClick: (String) ->
     var query by remember { mutableStateOf("") }
     val uiState by viewModel.uiState.collectAsState()
 
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colors.background)
+            .padding(WarehouseSpacing.md)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             TextField(
                 value = query,
                 onValueChange = { query = it },
                 modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(WarehouseSpacing.md),
+                colors = TextFieldDefaults.textFieldColors(
+                    backgroundColor = Color.White,
+                    focusedIndicatorColor = Color.Transparent,
+                    unfocusedIndicatorColor = Color.Transparent,
+                    disabledIndicatorColor = Color.Transparent,
+                    cursorColor = MaterialTheme.colors.primary,
+                    textColor = MaterialTheme.colors.onSurface
+                ),
                 placeholder = { Text("Search products...") }
             )
-            Button(onClick = { viewModel.search(query) }, modifier = Modifier.padding(start = 8.dp)) {
-                Text("Search")
+            Button(
+                onClick = { viewModel.search(query) },
+                modifier = Modifier.padding(start = WarehouseSpacing.xs),
+                shape = RoundedCornerShape(WarehouseSpacing.md),
+                colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.primary)
+            ) {
+                Text("Search", color = MaterialTheme.colors.onPrimary)
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(WarehouseSpacing.md))
 
         when (val state = uiState) {
             is SearchUiState.Loading -> SearchLoadingView(modifier = Modifier.fillMaxSize())
             is SearchUiState.Success -> {
                 if (state.products.isEmpty()) {
-                    Text("No products found for this search.", modifier = Modifier.padding(top = 16.dp))
+                    Text(
+                        text = "No products found for this search.",
+                        modifier = Modifier.padding(top = WarehouseSpacing.md),
+                        color = MaterialTheme.colors.onBackground.copy(alpha = 0.75f)
+                    )
                 } else {
-                    LazyColumn {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(WarehouseSpacing.xs)) {
                         items(state.products) { product ->
                             ProductItem(product, onProductClick)
                         }
@@ -53,7 +78,7 @@ fun SearchScreen(viewModel: SearchViewModelContract, onProductClick: (String) ->
                 }
             }
             is SearchUiState.Error -> Text("Error: ${state.message}", color = MaterialTheme.colors.error)
-            else -> Text("Enter a search term to begin.")
+            else -> Text("Enter a search term to begin.", color = MaterialTheme.colors.onBackground.copy(alpha = 0.7f))
         }
     }
 }
@@ -65,9 +90,9 @@ private fun SearchLoadingView(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(12.dp))
-            Text("Loading products...")
+            CircularProgressIndicator(color = MaterialTheme.colors.primary)
+            Spacer(modifier = Modifier.height(WarehouseSpacing.sm))
+            Text("Loading products...", color = MaterialTheme.colors.onBackground)
         }
     }
 }
@@ -76,13 +101,13 @@ private fun SearchLoadingView(modifier: Modifier = Modifier) {
 private fun DefaultProductImage(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colors.surface.copy(alpha = 0.7f)),
+            .clip(RoundedCornerShape(WarehouseSpacing.sm))
+            .background(MaterialTheme.colors.primary.copy(alpha = 0.08f)),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = "No Image",
-            color = MaterialTheme.colors.onSurface.copy(alpha = 0.45f),
+            color = MaterialTheme.colors.primary.copy(alpha = 0.65f),
             style = MaterialTheme.typography.caption
         )
     }
@@ -93,13 +118,14 @@ fun ProductItem(product: Product, onClick: (String) -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
             .clickable { product.productId?.let { onClick(it) } },
-        elevation = 2.dp
+        elevation = WarehouseSpacing.xxs,
+        shape = RoundedCornerShape(WarehouseSpacing.md),
+        backgroundColor = MaterialTheme.colors.surface
     ) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(modifier = Modifier.padding(WarehouseSpacing.md), verticalAlignment = Alignment.CenterVertically) {
             val imageUrl = product.imageUrls.firstOrNull() ?: product.productImageUrl
-            val imageModifier = Modifier.size(64.dp)
+            val imageModifier = Modifier.size(72.dp)
             if (!imageUrl.isNullOrEmpty()) {
                 KamelImage(
                     resource = asyncPainterResource(data = imageUrl),
@@ -113,10 +139,18 @@ fun ProductItem(product: Product, onClick: (String) -> Unit) {
             } else {
                 DefaultProductImage(modifier = imageModifier)
             }
-            Spacer(modifier = Modifier.width(16.dp))
-            Column {
-                Text(text = product.productName ?: "Unknown", style = MaterialTheme.typography.h6)
-                Text(text = "Price: $${product.priceInfo?.price ?: 0.0}", style = MaterialTheme.typography.body1)
+            Spacer(modifier = Modifier.width(WarehouseSpacing.md))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = product.productName ?: "Unknown",
+                    style = MaterialTheme.typography.h6,
+                    color = MaterialTheme.colors.onSurface
+                )
+                Text(
+                    text = "Price: $${product.priceInfo?.price ?: 0.0}",
+                    style = MaterialTheme.typography.body1,
+                    color = MaterialTheme.colors.primaryVariant
+                )
             }
         }
     }

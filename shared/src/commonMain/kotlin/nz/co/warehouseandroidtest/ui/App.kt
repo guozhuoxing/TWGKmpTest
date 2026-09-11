@@ -1,6 +1,5 @@
 package nz.co.warehouseandroidtest.ui
 
-import androidx.compose.material.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -10,6 +9,7 @@ import androidx.navigation.compose.rememberNavController
 import nz.co.warehouseandroidtest.api.ApiConfig
 import nz.co.warehouseandroidtest.api.WarehouseApi
 import nz.co.warehouseandroidtest.repository.WarehouseRepository
+import nz.co.warehouseandroidtest.ui.theme.WarehouseTheme
 import nz.co.warehouseandroidtest.viewmodel.ProductDetailViewModel
 import nz.co.warehouseandroidtest.viewmodel.ProductDetailViewModelContract
 import nz.co.warehouseandroidtest.viewmodel.SearchViewModel
@@ -28,7 +28,7 @@ fun App(
     val resolvedSearchViewModel = searchViewModel ?: remember { SearchViewModel(repository, scope) }
     val resolvedProductDetailViewModel = productDetailViewModel ?: remember { ProductDetailViewModel(repository, scope) }
 
-    MaterialTheme {
+    WarehouseTheme {
         NavHost(navController = navController, startDestination = "search") {
             composable("search") {
                 SearchScreen(
