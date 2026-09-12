@@ -4,9 +4,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,11 +21,11 @@ import io.kamel.image.KamelImage
 import io.kamel.image.asyncPainterResource
 import nz.co.warehouseandroidtest.data.Product
 import nz.co.warehouseandroidtest.ui.theme.WarehouseSpacing
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Image
 import nz.co.warehouseandroidtest.viewmodel.SearchUiState
+import nz.co.warehouseandroidtest.viewmodel.SearchViewModel
 import nz.co.warehouseandroidtest.viewmodel.SearchViewModelContract
 
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun SearchScreen(viewModel: SearchViewModelContract, onProductClick: (String) -> Unit) {
     var query by remember { mutableStateOf("") }
@@ -68,17 +71,55 @@ fun SearchScreen(viewModel: SearchViewModelContract, onProductClick: (String) ->
 
         when (val state = uiState) {
             is SearchUiState.Loading -> SearchLoadingView(modifier = Modifier.fillMaxSize())
-            is SearchUiState.Success -> {
-                if (state.products.isEmpty()) {
+            is SearchUiState.LoadingMore, is SearchUiState.Success -> {
+                val products = when (state) {
+                    is SearchUiState.LoadingMore -> state.products
+                    is SearchUiState.Success -> state.products
+                    else -> emptyList()
+                }
+                val isLoading = state is SearchUiState.LoadingMore
+
+                if (products.isEmpty()) {
                     Text(
                         text = "No products found for this search.",
                         modifier = Modifier.padding(top = WarehouseSpacing.md),
-                        color = MaterialTheme.colors.onBackground.copy(alpha = 0.75f)
+                        color = MaterialTheme.colors.onBackground.copy(alpha = 0.7f)
                     )
                 } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(WarehouseSpacing.xs)) {
-                        items(state.products) { product ->
-                            ProductItem(product, onProductClick)
+                    val listState = rememberLazyListState()
+                    
+                    LaunchedEffect(listState, isLoading) {
+                        snapshotFlow { 
+                            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+                            val totalItems = products.size + (if (isLoading) 1 else 0)
+                            lastVisibleIndex to totalItems
+                        }
+                            .collect { (lastIndex, total) ->
+                                if (lastIndex >= total - 2 && !isLoading && products.isNotEmpty()) {
+                                    viewModel.loadMore()
+                                }
+                            }
+                    }
+                    
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(WarehouseSpacing.xs),
+                        state = listState
+                    ) {
+                        items(products.size) { index ->
+                            ProductItem(products[index], onProductClick)
+                        }
+                        if (isLoading) {
+                            item(key = "loading_footer") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = WarehouseSpacing.md),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(color = MaterialTheme.colors.primary)
+                                }
+                            }
                         }
                     }
                 }

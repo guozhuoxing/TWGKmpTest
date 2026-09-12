@@ -19,8 +19,8 @@ class WarehouseRepository(private var api: WarehouseApi) {
         api.login(device)
     }
 
-    suspend fun searchProducts(query: String, start: Int = 0): SearchResult {
-        return api.searchProducts(query, start)
+    suspend fun searchProducts(query: String, start: Int = 0, limit: Int = 20): SearchResult {
+        return api.searchProducts(query, start, limit)
     }
 
     suspend fun getProductDetail(productId: String): Product? {

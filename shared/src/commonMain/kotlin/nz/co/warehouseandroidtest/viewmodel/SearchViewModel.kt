@@ -25,6 +25,8 @@ import nz.co.warehouseandroidtest.repository.WarehouseRepository
 interface SearchViewModelContract {
     val uiState: StateFlow<SearchUiState>
     fun search(query: String)
+    fun refresh()
+    fun loadMore()
     fun retryLastSearch()
     fun initLogin()
 }
@@ -41,11 +43,18 @@ class SearchViewModel(
     private val scope: CoroutineScope? = null,
     private val dispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : SearchViewModelContract {
+    companion object {
+        const val PAGE_SIZE = 10
+    }
+
     private val _uiState = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
     override val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
     private val activeScope = scope ?: CoroutineScope(SupervisorJob() + dispatcher)
     private var lastQuery: String = ""
     private var hasLoggedIn = false
+    private var isSearchInFlight = false
+    private var isLoadMoreInFlight = false
+    private var currentPage = 0
 
     fun clear() {
         if (scope == null) {
@@ -70,14 +79,17 @@ class SearchViewModel(
     override fun search(query: String) {
         val trimmedQuery = query.trim()
         AppLogger.debug("SearchViewModel: Searching for $trimmedQuery")
-        if (trimmedQuery.isBlank()) return
+        if (trimmedQuery.isBlank() || isSearchInFlight) return
 
         lastQuery = trimmedQuery
+        currentPage = 0
+        isSearchInFlight = true
+        _uiState.value = SearchUiState.Loading
         activeScope.launch(dispatcher) {
             try {
-                _uiState.value = SearchUiState.Loading
-                val result = performSearchWithRetry(trimmedQuery)
-                AppLogger.debug("SearchViewModel: Found ${result.products.size} products")
+                val start = currentPage * PAGE_SIZE
+                val result = performSearchWithRetry(trimmedQuery, start = start, limit = PAGE_SIZE)
+                AppLogger.debug("SearchViewModel: Page $currentPage - requested start=$start, limit=$PAGE_SIZE, got ${result.products.size} items")
                 _uiState.value = SearchUiState.Success(result.products)
             } catch (e: CancellationException) {
                 // Ignore cancellations from an in-flight request or scope shutdown.
@@ -86,17 +98,62 @@ class SearchViewModel(
                 val friendlyMessage = formatErrorMessage(e)
                 AppLogger.error("SearchViewModel: Error searching: ${e.message}")
                 _uiState.value = SearchUiState.Error(friendlyMessage)
+            } finally {
+                isSearchInFlight = false
             }
         }
     }
 
-    private suspend fun performSearchWithRetry(query: String, maxRetries: Int = 2): nz.co.warehouseandroidtest.data.SearchResult {
+    override fun refresh() {
+        if (lastQuery.isBlank()) return
+        search(lastQuery)
+    }
+
+    override fun loadMore() {
+        if (lastQuery.isBlank() || isSearchInFlight || isLoadMoreInFlight) return
+
+        val currentProducts = when (val state = _uiState.value) {
+            is SearchUiState.Success -> state.products
+            is SearchUiState.LoadingMore -> state.products
+            else -> emptyList()
+        }
+        if (currentProducts.isEmpty()) return
+
+        isLoadMoreInFlight = true
+        activeScope.launch(dispatcher) {
+            try {
+                _uiState.value = SearchUiState.LoadingMore(currentProducts)
+                currentPage += 1
+                val start = currentPage * PAGE_SIZE
+                val result = performSearchWithRetry(lastQuery, start = start, limit = PAGE_SIZE)
+                AppLogger.debug("SearchViewModel: Page $currentPage - requested start=$start, limit=$PAGE_SIZE, got ${result.products.size} items")
+                
+                // Remove duplicates by productId
+                val currentIds = currentProducts.mapNotNull { it.productId }.toSet()
+                val newProducts = result.products.filter { it.productId !in currentIds }
+                val merged = currentProducts + newProducts
+                
+                _uiState.value = SearchUiState.Success(merged)
+            } catch (e: CancellationException) {
+                // Ignore cancellations from an in-flight request or scope shutdown.
+            } catch (e: Exception) {
+                repository.resetClient()
+                val friendlyMessage = formatErrorMessage(e)
+                AppLogger.error("SearchViewModel: Error loading more: ${e.message}")
+                _uiState.value = SearchUiState.Error(friendlyMessage)
+            } finally {
+                isLoadMoreInFlight = false
+            }
+        }
+    }
+
+    private suspend fun performSearchWithRetry(query: String, start: Int = 0, limit: Int = PAGE_SIZE, maxRetries: Int = 2): nz.co.warehouseandroidtest.data.SearchResult {
         var attempt = 0
         var lastError: Throwable? = null
 
         while (attempt <= maxRetries) {
             try {
-                return repository.searchProducts(query)
+                return repository.searchProducts(query, start, limit)
             } catch (error: Throwable) {
                 lastError = error
                 if (attempt == maxRetries || !isRetryableError(error)) {
@@ -156,6 +213,9 @@ sealed class SearchUiState {
 
     /** Indicates that the current query is being fetched from the repository. */
     object Loading : SearchUiState()
+
+    /** Indicates that more items are being appended to an existing result list. */
+    data class LoadingMore(val products: List<Product>) : SearchUiState()
 
     /** Successful search response containing matching products. */
     data class Success(val products: List<Product>) : SearchUiState()
