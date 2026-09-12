@@ -298,6 +298,46 @@ class SearchViewModelTest {
     }
     
     @Test
+    fun loadMore_doesNotTriggerWhenFirstPageIsSmallerThanPageSize() = runBlocking {
+        var callCount = 0
+
+        val mockEngine = MockEngine { _ ->
+            callCount += 1
+            val products = (0 until 5).map { index ->
+                "{ \"productName\": \"Product $index\", \"productId\": \"id_$index\" }"
+            }.joinToString(",")
+
+            respond(
+                content = ByteReadChannel("""
+                    {
+                        "total": 5,
+                        "products": [$products]
+                    }
+                """.trimIndent()),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+
+        val viewModel = SearchViewModel(
+            WarehouseRepository(WarehouseApi(mockEngine)),
+            this
+        )
+
+        viewModel.search("milk")
+        withTimeout(5000L) {
+            while (viewModel.uiState.value !is SearchUiState.Success) {
+                delay(10)
+            }
+        }
+
+        viewModel.loadMore()
+        delay(200)
+
+        assertEquals(1, callCount)
+    }
+
+    @Test
     fun search_newQuery_resetsPageCounterAndClearsOldData() = runBlocking {
         val requestParams = mutableListOf<String>()
         
