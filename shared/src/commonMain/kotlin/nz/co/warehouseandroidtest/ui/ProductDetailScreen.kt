@@ -38,6 +38,34 @@ private fun DefaultProductImage(modifier: Modifier = Modifier) {
 }
 
 @Composable
+private fun ProductErrorView(message: String, onRetry: () -> Unit) {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.padding(WarehouseSpacing.md)
+        ) {
+            Text(
+                text = "Oops! Something went wrong",
+                style = MaterialTheme.typography.h6,
+                color = MaterialTheme.colors.onBackground
+            )
+            Spacer(modifier = Modifier.height(WarehouseSpacing.xs))
+            Spacer(modifier = Modifier.height(WarehouseSpacing.md))
+            Button(
+                onClick = onRetry,
+                shape = RoundedCornerShape(WarehouseSpacing.md),
+                colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.primary)
+            ) {
+                Text("Retry", color = Color.White)
+            }
+        }
+    }
+}
+
+@Composable
 fun ProductDetailScreen(viewModel: ProductDetailViewModelContract, productId: String, onBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -62,7 +90,6 @@ fun ProductDetailScreen(viewModel: ProductDetailViewModelContract, productId: St
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding).padding(WarehouseSpacing.md)) {
             when (val state = uiState) {
-                is ProductDetailUiState.Loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = MaterialTheme.colors.primary)
                 is ProductDetailUiState.Success -> {
                     val product = state.product
                     val imageUrl = product.imageUrls.firstOrNull() ?: product.productImageUrl
@@ -105,7 +132,10 @@ fun ProductDetailScreen(viewModel: ProductDetailViewModelContract, productId: St
                         }
                     }
                 }
-                is ProductDetailUiState.Error -> Text("Error: ${state.message}", color = MaterialTheme.colors.error)
+                is ProductDetailUiState.Error -> ProductErrorView(
+                    message = state.message,
+                    onRetry = { viewModel.loadProductDetail(productId) }
+                )
                 else -> {}
             }
         }
