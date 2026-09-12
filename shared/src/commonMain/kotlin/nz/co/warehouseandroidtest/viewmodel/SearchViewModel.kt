@@ -24,9 +24,7 @@ import nz.co.warehouseandroidtest.repository.WarehouseRepository
 interface SearchViewModelContract {
     val uiState: StateFlow<SearchUiState>
     fun search(query: String)
-    fun refresh()
     fun loadMore()
-    fun retryLastSearch()
     fun initLogin()
 }
 
@@ -87,7 +85,7 @@ class SearchViewModel(
         activeScope.launch(dispatcher) {
             try {
                 val start = currentPage * PAGE_SIZE
-                val result = performSearchWithRetry(trimmedQuery, start = start, limit = PAGE_SIZE)
+                val result = fetchProductsPage(trimmedQuery, start = start, limit = PAGE_SIZE)
                 AppLogger.debug("SearchViewModel: Page $currentPage - requested start=$start, limit=$PAGE_SIZE, got ${result.products.size} items")
                 _uiState.value = SearchUiState.Success(result.products)
             } catch (e: Exception) {
@@ -101,19 +99,10 @@ class SearchViewModel(
         }
     }
 
-    override fun refresh() {
-        if (lastQuery.isBlank()) return
-        search(lastQuery)
-    }
-
     override fun loadMore() {
         if (lastQuery.isBlank() || isSearchInFlight || isLoadMoreInFlight) return
 
-        val currentProducts = when (val state = _uiState.value) {
-            is SearchUiState.Success -> state.products
-            is SearchUiState.LoadingMore -> state.products
-            else -> emptyList()
-        }
+        val currentProducts = currentProductsFromState()
         if (currentProducts.isEmpty()) return
 
         isLoadMoreInFlight = true
@@ -122,14 +111,10 @@ class SearchViewModel(
                 _uiState.value = SearchUiState.LoadingMore(currentProducts)
                 currentPage += 1
                 val start = currentPage * PAGE_SIZE
-                val result = performSearchWithRetry(lastQuery, start = start, limit = PAGE_SIZE)
+                val result = fetchProductsPage(lastQuery, start = start, limit = PAGE_SIZE)
                 AppLogger.debug("SearchViewModel: Page $currentPage - requested start=$start, limit=$PAGE_SIZE, got ${result.products.size} items")
-                
-                // Remove duplicates by productId
-                val currentIds = currentProducts.mapNotNull { it.productId }.toSet()
-                val newProducts = result.products.filter { it.productId !in currentIds }
-                val merged = currentProducts + newProducts
-                
+
+                val merged = mergeWithoutDuplicates(currentProducts, result.products)
                 _uiState.value = SearchUiState.Success(merged)
             } catch (e: CancellationException) {
                 // Ignore cancellations from an in-flight request or scope shutdown.
@@ -144,7 +129,24 @@ class SearchViewModel(
         }
     }
 
-    private suspend fun performSearchWithRetry(query: String, start: Int = 0, limit: Int = PAGE_SIZE, maxRetries: Int = 2): nz.co.warehouseandroidtest.data.SearchResult {
+    private fun currentProductsFromState(): List<Product> = when (val state = _uiState.value) {
+        is SearchUiState.Success -> state.products
+        is SearchUiState.LoadingMore -> state.products
+        else -> emptyList()
+    }
+
+    private fun mergeWithoutDuplicates(currentProducts: List<Product>, newProducts: List<Product>): List<Product> {
+        val currentIds = currentProducts.mapNotNull { it.productId }.toSet()
+        val uniqueNewProducts = newProducts.filter { it.productId !in currentIds }
+        return currentProducts + uniqueNewProducts
+    }
+
+    private suspend fun fetchProductsPage(
+        query: String,
+        start: Int = 0,
+        limit: Int = PAGE_SIZE,
+        maxRetries: Int = 2
+    ): nz.co.warehouseandroidtest.data.SearchResult {
         var attempt = 0
         var lastError: Throwable? = null
 
@@ -153,7 +155,7 @@ class SearchViewModel(
                 return repository.searchProducts(query, start, limit)
             } catch (error: Throwable) {
                 lastError = error
-                if (attempt == maxRetries || !isRetryableError(error)) {
+                if (attempt == maxRetries || !isTransientRequestError(error)) {
                     throw error
                 }
                 val backoffMs = 500L * (attempt + 1)
@@ -166,7 +168,7 @@ class SearchViewModel(
         throw lastError ?: IllegalStateException("Search failed without a root cause")
     }
 
-    private fun isRetryableError(error: Throwable): Boolean {
+    private fun isTransientRequestError(error: Throwable): Boolean {
         val message = error.message.orEmpty()
         return message.contains("timeout", ignoreCase = true) ||
             message.contains("timed out", ignoreCase = true) ||
@@ -176,11 +178,6 @@ class SearchViewModel(
             message.contains("temporar", ignoreCase = true) ||
             message.contains("refused", ignoreCase = true) ||
             message.contains("reset", ignoreCase = true)
-    }
-
-    override fun retryLastSearch() {
-        if (lastQuery.isBlank()) return
-        search(lastQuery)
     }
 
     private fun formatErrorMessage(error: Throwable): String {
@@ -199,25 +196,3 @@ class SearchViewModel(
     }
 }
 
-/**
- * UI state exposed by the search flow.
- *
- * The screen intentionally models each meaningful state separately so the Compose UI can render the
- * correct layout for idle, loading, empty, pagination, success, and error scenarios.
- */
-sealed interface SearchUiState {
-    /** Initial state before any search request is started. */
-    data object Idle : SearchUiState
-
-    /** Indicates that the current query is being fetched from the repository. */
-    data object Loading : SearchUiState
-
-    /** Indicates that more items are being appended to an existing result list. */
-    data class LoadingMore(val products: List<Product>) : SearchUiState
-
-    /** Successful search response containing matching products. */
-    data class Success(val products: List<Product>) : SearchUiState
-
-    /** Search failure state with a human-readable error message. */
-    data class Error(val message: String) : SearchUiState
-}

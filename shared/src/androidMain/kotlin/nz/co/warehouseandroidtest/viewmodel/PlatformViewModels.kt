@@ -25,16 +25,8 @@ class PlatformSearchViewModel(
         delegate.search(query)
     }
 
-    override fun refresh() {
-        delegate.refresh()
-    }
-
     override fun loadMore() {
         delegate.loadMore()
-    }
-
-    override fun retryLastSearch() {
-        delegate.retryLastSearch()
     }
 
     override fun initLogin() {

@@ -39,12 +39,6 @@ class ProductDetailViewModel(
     override val uiState: StateFlow<ProductDetailUiState> = _uiState.asStateFlow()
     private val activeScope = scope ?: CoroutineScope(SupervisorJob() + dispatcher)
 
-    fun clear() {
-        if (scope == null) {
-            activeScope.cancel()
-        }
-    }
-
     override fun loadProductDetail(productId: String) {
         activeScope.launch(dispatcher) {
             try {
@@ -55,8 +49,6 @@ class ProductDetailViewModel(
                 } else {
                     _uiState.value = ProductDetailUiState.Error("Product not found")
                 }
-            } catch (e: CancellationException) {
-                // Ignore cancellations from an in-flight request.
             } catch (e: Exception) {
                 _uiState.value = ProductDetailUiState.Error(e.message ?: "Unknown error")
             }
@@ -64,21 +56,3 @@ class ProductDetailViewModel(
     }
 }
 
-/**
- * UI states for the product detail flow.
- *
- * It models the screen lifecycle from initial idle to final success or error rendering.
- */
-sealed class ProductDetailUiState {
-    /** Initial state before the product detail request is started. */
-    object Idle : ProductDetailUiState()
-
-    /** Indicates that detail data is currently being requested. */
-    object Loading : ProductDetailUiState()
-
-    /** Successful detail response for the selected product. */
-    data class Success(val product: Product) : ProductDetailUiState()
-
-    /** Error state when the detail request fails or the product is not found. */
-    data class Error(val message: String) : ProductDetailUiState()
-}
