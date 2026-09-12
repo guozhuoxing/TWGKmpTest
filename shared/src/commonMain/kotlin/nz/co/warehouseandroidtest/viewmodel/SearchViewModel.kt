@@ -5,7 +5,6 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -49,18 +48,18 @@ class SearchViewModel(
 
     private val _uiState = MutableStateFlow<SearchUiState>(SearchUiState.Idle)
     override val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
+    // Shared coroutine scope for all async work in this ViewModel.
     private val activeScope = scope ?: CoroutineScope(SupervisorJob() + dispatcher)
+    // Tracks the last search term so refresh/load-more can reuse the same query.
     private var lastQuery: String = ""
+    // Login is triggered only once per ViewModel lifetime.
     private var hasLoggedIn = false
+    // Prevents overlapping searches.
     private var isSearchInFlight = false
+    // Prevents overlapping pagination requests.
     private var isLoadMoreInFlight = false
+    // Current page index used to calculate the correct offset for the next page.
     private var currentPage = 0
-
-    fun clear() {
-        if (scope == null) {
-            activeScope.cancel()
-        }
-    }
 
     override fun initLogin() {
         if (hasLoggedIn) return
@@ -91,8 +90,6 @@ class SearchViewModel(
                 val result = performSearchWithRetry(trimmedQuery, start = start, limit = PAGE_SIZE)
                 AppLogger.debug("SearchViewModel: Page $currentPage - requested start=$start, limit=$PAGE_SIZE, got ${result.products.size} items")
                 _uiState.value = SearchUiState.Success(result.products)
-            } catch (e: CancellationException) {
-                // Ignore cancellations from an in-flight request or scope shutdown.
             } catch (e: Exception) {
                 repository.resetClient()
                 val friendlyMessage = formatErrorMessage(e)
@@ -203,23 +200,24 @@ class SearchViewModel(
 }
 
 /**
- * UI states exposed by the search flow.
+ * UI state exposed by the search flow.
  *
- * The ViewModel transitions through Idle -> Loading -> Success/Error depending on repository result.
+ * The screen intentionally models each meaningful state separately so the Compose UI can render the
+ * correct layout for idle, loading, empty, pagination, success, and error scenarios.
  */
-sealed class SearchUiState {
+sealed interface SearchUiState {
     /** Initial state before any search request is started. */
-    object Idle : SearchUiState()
+    data object Idle : SearchUiState
 
     /** Indicates that the current query is being fetched from the repository. */
-    object Loading : SearchUiState()
+    data object Loading : SearchUiState
 
     /** Indicates that more items are being appended to an existing result list. */
-    data class LoadingMore(val products: List<Product>) : SearchUiState()
+    data class LoadingMore(val products: List<Product>) : SearchUiState
 
     /** Successful search response containing matching products. */
-    data class Success(val products: List<Product>) : SearchUiState()
+    data class Success(val products: List<Product>) : SearchUiState
 
     /** Search failure state with a human-readable error message. */
-    data class Error(val message: String) : SearchUiState()
+    data class Error(val message: String) : SearchUiState
 }
