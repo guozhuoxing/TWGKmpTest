@@ -58,6 +58,8 @@ class SearchViewModel(
     private var isLoadMoreInFlight = false
     // Current page index used to calculate the correct offset for the next page.
     private var currentPage = 0
+    // Stops endless pagination once the backend returns fewer than one full page.
+    private var hasMorePages = true
 
     override fun initLogin() {
         if (hasLoggedIn) return
@@ -80,13 +82,16 @@ class SearchViewModel(
 
         lastQuery = trimmedQuery
         currentPage = 0
+        hasMorePages = true
         isSearchInFlight = true
         _uiState.value = SearchUiState.Loading
         activeScope.launch(dispatcher) {
             try {
                 val start = currentPage * PAGE_SIZE
-                val result = fetchProductsPage(trimmedQuery, start = start, limit = PAGE_SIZE)
-                AppLogger.debug("SearchViewModel: Page $currentPage - requested start=$start, limit=$PAGE_SIZE, got ${result.products.size} items")
+                val requestedLimit = PAGE_SIZE
+                val result = fetchProductsPage(trimmedQuery, start = start, limit = requestedLimit)
+                AppLogger.debug("SearchViewModel: Page $currentPage - requested start=$start, limit=$requestedLimit, got ${result.products.size} items, total=${result.total}")
+                hasMorePages = result.total > start + result.products.size
                 _uiState.value = SearchUiState.Success(result.products)
             } catch (e: Exception) {
                 repository.resetClient()
@@ -100,7 +105,7 @@ class SearchViewModel(
     }
 
     override fun loadMore() {
-        if (lastQuery.isBlank() || isSearchInFlight || isLoadMoreInFlight) return
+        if (lastQuery.isBlank() || isSearchInFlight || isLoadMoreInFlight || !hasMorePages) return
 
         val currentProducts = currentProductsFromState()
         if (currentProducts.isEmpty()) return
@@ -111,13 +116,13 @@ class SearchViewModel(
                 _uiState.value = SearchUiState.LoadingMore(currentProducts)
                 currentPage += 1
                 val start = currentPage * PAGE_SIZE
-                val result = fetchProductsPage(lastQuery, start = start, limit = PAGE_SIZE)
-                AppLogger.debug("SearchViewModel: Page $currentPage - requested start=$start, limit=$PAGE_SIZE, got ${result.products.size} items")
+                val requestedLimit = PAGE_SIZE
+                val result = fetchProductsPage(lastQuery, start = start, limit = requestedLimit)
+                AppLogger.debug("SearchViewModel: Page $currentPage - requested start=$start, limit=$requestedLimit, got ${result.products.size} items, total=${result.total}")
 
                 val merged = mergeWithoutDuplicates(currentProducts, result.products)
+                hasMorePages = result.total > start + result.products.size
                 _uiState.value = SearchUiState.Success(merged)
-            } catch (e: CancellationException) {
-                // Ignore cancellations from an in-flight request or scope shutdown.
             } catch (e: Exception) {
                 repository.resetClient()
                 val friendlyMessage = formatErrorMessage(e)
@@ -129,6 +134,8 @@ class SearchViewModel(
         }
     }
 
+    // Read the list currently displayed on screen so pagination can append the next page without
+    // losing the existing results when the state is either Success or LoadingMore.
     private fun currentProductsFromState(): List<Product> = when (val state = _uiState.value) {
         is SearchUiState.Success -> state.products
         is SearchUiState.LoadingMore -> state.products
@@ -169,28 +176,17 @@ class SearchViewModel(
     }
 
     private fun isTransientRequestError(error: Throwable): Boolean {
-        val message = error.message.orEmpty()
-        return message.contains("timeout", ignoreCase = true) ||
-            message.contains("timed out", ignoreCase = true) ||
-            message.contains("connect", ignoreCase = true) ||
-            message.contains("network", ignoreCase = true) ||
-            message.contains("unreachable", ignoreCase = true) ||
-            message.contains("temporar", ignoreCase = true) ||
-            message.contains("refused", ignoreCase = true) ||
-            message.contains("reset", ignoreCase = true)
+        if (error is CancellationException) return false
+        return error::class.simpleName in setOf(
+            "SocketTimeoutException",
+            "TimeoutException"
+        )
     }
 
     private fun formatErrorMessage(error: Throwable): String {
-        val rawMessage = error.message.orEmpty()
-        return when {
-            rawMessage.contains("timeout", ignoreCase = true) ||
-                rawMessage.contains("timed out", ignoreCase = true) ->
-                "The request timed out. Please try again in a moment."
-            rawMessage.contains("connect", ignoreCase = true) ||
-                rawMessage.contains("unreachable", ignoreCase = true) ||
-                rawMessage.contains("network", ignoreCase = true) ->
-                "Network connection is unavailable. Please check your connection and try again."
-            rawMessage.isBlank() -> "Something went wrong while searching. Please try again."
+        return when (error::class.simpleName) {
+            "SocketTimeoutException",
+            "TimeoutException" -> "The request timed out. Please try again in a moment."
             else -> "We couldn't load products right now. Please try again."
         }
     }
