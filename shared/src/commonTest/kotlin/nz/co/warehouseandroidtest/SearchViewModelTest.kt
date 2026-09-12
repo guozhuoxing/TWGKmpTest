@@ -240,4 +240,180 @@ class SearchViewModelTest {
         assertTrue(finalState !is SearchUiState.Loading)
     }
 
+    @Test
+    fun loadMore_withPageCountingLogic_requestsCorrectStartAndLimit() = runBlocking {
+        val requestParams = mutableListOf<Pair<Int, Int>>()
+        
+        val mockEngine = MockEngine { request ->
+            val start = request.url.parameters["Start"]?.toInt() ?: 0
+            val limit = request.url.parameters["Limit"]?.toInt() ?: SearchViewModel.PAGE_SIZE
+            requestParams.add(start to limit)
+            
+            val products = (start until start + limit).map { index ->
+                "{ \"productName\": \"Product $index\", \"productId\": \"id_$index\" }"
+            }.joinToString(",")
+            
+            respond(
+                content = ByteReadChannel("""
+                    {
+                        "total": 100,
+                        "products": [$products]
+                    }
+                """.trimIndent()),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        
+        val viewModel = SearchViewModel(
+            WarehouseRepository(WarehouseApi(mockEngine)),
+            this
+        )
+        
+        // First search
+        viewModel.search("milk")
+        withTimeout(5000L) {
+            while (viewModel.uiState.value !is SearchUiState.Success) {
+                delay(10)
+            }
+        }
+        
+        // Load more twice
+        viewModel.loadMore()
+        withTimeout(5000L) {
+            while ((viewModel.uiState.value as? SearchUiState.Success)?.products?.size != 20) {
+                delay(10)
+            }
+        }
+        
+        viewModel.loadMore()
+        withTimeout(5000L) {
+            while ((viewModel.uiState.value as? SearchUiState.Success)?.products?.size != 30) {
+                delay(10)
+            }
+        }
+        
+        // Verify page counting: page 0 (start=0), page 1 (start=10), page 2 (start=20)
+        assertEquals(listOf(0 to 10, 10 to 10, 20 to 10), requestParams)
+    }
+    
+    @Test
+    fun search_newQuery_resetsPageCounterAndClearsOldData() = runBlocking {
+        val requestParams = mutableListOf<String>()
+        
+        val mockEngine = MockEngine { request ->
+            val query = request.url.parameters["Search"] ?: ""
+            val start = request.url.parameters["Start"]?.toInt() ?: 0
+            requestParams.add("$query:$start")
+            
+            val products = listOf(
+                "{ \"productName\": \"${query}_Product_$start\", \"productId\": \"${query}_id_$start\" }"
+            )
+            
+            respond(
+                content = ByteReadChannel("""
+                    {
+                        "total": 100,
+                        "products": [${products.joinToString(",")}]
+                    }
+                """.trimIndent()),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        
+        val viewModel = SearchViewModel(
+            WarehouseRepository(WarehouseApi(mockEngine)),
+            this
+        )
+        
+        // Search milk
+        viewModel.search("milk")
+        withTimeout(5000L) {
+            while (viewModel.uiState.value !is SearchUiState.Success) {
+                delay(10)
+            }
+        }
+        var successState = viewModel.uiState.value as SearchUiState.Success
+        assertEquals("milk_Product_0", successState.products[0].productName)
+        
+        // Search apple (should reset page counter and clear old data)
+        viewModel.search("apple")
+        withTimeout(5000L) {
+            while (viewModel.uiState.value !is SearchUiState.Success) {
+                delay(10)
+            }
+        }
+        successState = viewModel.uiState.value as SearchUiState.Success
+        assertEquals("apple_Product_0", successState.products[0].productName)
+        assertEquals(1, successState.products.size)
+        
+        // Verify requests: milk with start=0, then apple with start=0
+        assertEquals(listOf("milk:0", "apple:0"), requestParams)
+    }
+    
+    @Test
+    fun loadMore_withDuplicateProductIds_filtersDuplicatesFromNewPage() = runBlocking {
+        var callCount = 0
+        
+        val mockEngine = MockEngine { request ->
+            callCount++
+            
+            val products = if (callCount == 1) {
+                // First call: return products 0-9
+                (0 until 10).map { index ->
+                    "{ \"productName\": \"Product $index\", \"productId\": \"id_$index\" }"
+                }.joinToString(",")
+            } else {
+                // Second call: API returns overlapping data (8, 9, 10, 11, ...) - simulating API bug
+                // Returns ids: 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
+                (8 until 18).map { index ->
+                    "{ \"productName\": \"Product $index\", \"productId\": \"id_$index\" }"
+                }.joinToString(",")
+            }
+            
+            respond(
+                content = ByteReadChannel("""
+                    {
+                        "total": 100,
+                        "products": [$products]
+                    }
+                """.trimIndent()),
+                status = HttpStatusCode.OK,
+                headers = headersOf(HttpHeaders.ContentType, "application/json")
+            )
+        }
+        
+        val viewModel = SearchViewModel(
+            WarehouseRepository(WarehouseApi(mockEngine)),
+            this
+        )
+        
+        viewModel.search("milk")
+        withTimeout(5000L) {
+            while (viewModel.uiState.value !is SearchUiState.Success) {
+                delay(10)
+            }
+        }
+        
+        var successState = viewModel.uiState.value as SearchUiState.Success
+        assertEquals(10, successState.products.size)
+        
+        // Load more - should filter out duplicate ids (8, 9)
+        viewModel.loadMore()
+        withTimeout(5000L) {
+            while ((viewModel.uiState.value as? SearchUiState.Success)?.products?.size != 18) {
+                delay(10)
+            }
+        }
+        
+        successState = viewModel.uiState.value as SearchUiState.Success
+        // Should have 10 original + 8 new (10-17 after filtering out duplicates 8,9) = 18
+        assertEquals(18, successState.products.size)
+        // Verify no duplicate ids
+        val ids = successState.products.mapNotNull { it.productId }
+        assertEquals(ids.size, ids.toSet().size)
+    }
+
 }
+
