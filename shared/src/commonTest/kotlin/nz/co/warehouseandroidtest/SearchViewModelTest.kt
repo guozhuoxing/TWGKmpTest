@@ -1,12 +1,14 @@
 package nz.co.warehouseandroidtest
 
 import io.ktor.client.engine.mock.MockEngine
+import io.ktor.client.engine.mock.MockRequestHandleScope
 import io.ktor.client.engine.mock.respond
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.headersOf
 import io.ktor.utils.io.ByteReadChannel
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
@@ -30,25 +32,11 @@ class SearchViewModelTest {
 
     @Test
     fun search_whenQueryIsBlank_shouldNotTriggerRequest() = runBlocking {
-        val mockEngine = MockEngine { _ ->
-            respond(
-                content = ByteReadChannel("""
-                    {
-                        "total": 1,
-                        "products": [
-                            { "productName": "Milk", "productId": "123" }
-                        ]
-                    }
-                """.trimIndent()),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, "application/json")
-            )
-        }
-
-        val viewModel = SearchViewModel(
-            WarehouseRepository(WarehouseApi(mockEngine)),
-            this
+        val mockEngine = mockSearchEngine(
+            products = listOf("{ \"productName\": \"Milk\", \"productId\": \"123\" }")
         )
+
+        val viewModel = buildViewModel(mockEngine, this)
 
         viewModel.search("   ")
         assertEquals(SearchUiState.Idle, viewModel.uiState.value)
@@ -59,35 +47,17 @@ class SearchViewModelTest {
         val responseGate = CompletableDeferred<Unit>()
         val mockEngine = MockEngine { _ ->
             responseGate.await()
-            respond(
-                content = ByteReadChannel("""
-                    {
-                        "total": 0,
-                        "products": []
-                    }
-                """.trimIndent()),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, "application/json")
-            )
+            respondJson(products = emptyList(), total = 0)
         }
 
-        val viewModel = SearchViewModel(
-            WarehouseRepository(WarehouseApi(mockEngine)),
-            this
-        )
+        val viewModel = buildViewModel(mockEngine, this)
 
         viewModel.search("milk")
 
-        withTimeout(5000L) {
-            while (viewModel.uiState.value !is SearchUiState.Loading) {
-                delay(10)
-            }
-            assertTrue(viewModel.uiState.value is SearchUiState.Loading)
-            responseGate.complete(Unit)
-            while (viewModel.uiState.value is SearchUiState.Loading) {
-                delay(10)
-            }
-        }
+        awaitUiState(viewModel) { it is SearchUiState.Loading }
+        assertTrue(viewModel.uiState.value is SearchUiState.Loading)
+        responseGate.complete(Unit)
+        awaitUiState(viewModel) { it !is SearchUiState.Loading }
 
         val state = viewModel.uiState.value
         assertTrue(state is SearchUiState.Success, "Expected Success state but was ${state::class.simpleName}")
@@ -100,37 +70,17 @@ class SearchViewModelTest {
         val responseGate = CompletableDeferred<Unit>()
         val mockEngine = MockEngine { _ ->
             responseGate.await()
-            respond(
-                content = ByteReadChannel("""
-                    {
-                        "total": 1,
-                        "products": [
-                            { "productName": "Milk", "productId": "123" }
-                        ]
-                    }
-                """.trimIndent()),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, "application/json")
-            )
+            respondJson(products = listOf("{ \"productName\": \"Milk\", \"productId\": \"123\" }"), total = 1)
         }
 
-        val viewModel = SearchViewModel(
-            WarehouseRepository(WarehouseApi(mockEngine)),
-            this
-        )
+        val viewModel = buildViewModel(mockEngine, this)
 
         viewModel.search("milk")
 
-        withTimeout(5000L) {
-            while (viewModel.uiState.value !is SearchUiState.Loading) {
-                delay(10)
-            }
-            assertTrue(viewModel.uiState.value is SearchUiState.Loading)
-            responseGate.complete(Unit)
-            while (viewModel.uiState.value is SearchUiState.Loading) {
-                delay(10)
-            }
-        }
+        awaitUiState(viewModel) { it is SearchUiState.Loading }
+        assertTrue(viewModel.uiState.value is SearchUiState.Loading)
+        responseGate.complete(Unit)
+        awaitUiState(viewModel) { it !is SearchUiState.Loading }
 
         val state = viewModel.uiState.value
         assertTrue(state is SearchUiState.Success, "Expected Success state but was ${state::class.simpleName}")
@@ -150,23 +100,14 @@ class SearchViewModelTest {
             )
         }
 
-        val viewModel = SearchViewModel(
-            WarehouseRepository(WarehouseApi(mockEngine)),
-            this
-        )
+        val viewModel = buildViewModel(mockEngine, this)
 
         viewModel.search("milk")
 
-        withTimeout(5000L) {
-            while (viewModel.uiState.value !is SearchUiState.Loading) {
-                delay(10)
-            }
-            assertTrue(viewModel.uiState.value is SearchUiState.Loading)
-            responseGate.complete(Unit)
-            while (viewModel.uiState.value is SearchUiState.Loading) {
-                delay(10)
-            }
-        }
+        awaitUiState(viewModel) { it is SearchUiState.Loading }
+        assertTrue(viewModel.uiState.value is SearchUiState.Loading)
+        responseGate.complete(Unit)
+        awaitUiState(viewModel) { it !is SearchUiState.Loading }
 
         val state = viewModel.uiState.value
         assertTrue(state is SearchUiState.Error, "Expected Error state but was ${state::class.simpleName}")
@@ -175,21 +116,13 @@ class SearchViewModelTest {
     @Test
     fun search_whenRepositoryThrowsTimeout_shouldEmitFriendlyErrorMessage() = runBlocking {
         val mockEngine = MockEngine { _ ->
-            throw RuntimeException("Request timed out")
+            throw java.net.SocketTimeoutException("Request timed out")
         }
 
-        val viewModel = SearchViewModel(
-            WarehouseRepository(WarehouseApi(mockEngine)),
-            this
-        )
+        val viewModel = buildViewModel(mockEngine, this)
 
         viewModel.search("iphone")
-
-        withTimeout(5000L) {
-            while (viewModel.uiState.value !is SearchUiState.Error) {
-                delay(10)
-            }
-        }
+        awaitUiState(viewModel) { it is SearchUiState.Error }
 
         val state = viewModel.uiState.value
         assertTrue(state is SearchUiState.Error, "Expected Error state but was ${state::class.simpleName}")
@@ -210,90 +143,48 @@ class SearchViewModelTest {
             )
         }
 
-        val viewModel = SearchViewModel(
-            WarehouseRepository(WarehouseApi(mockEngine)),
-            this
-        )
+        val viewModel = buildViewModel(mockEngine, this)
 
         viewModel.search("milk")
 
-        // Wait until Loading is emitted
-        withTimeout(5000L) {
-            while (viewModel.uiState.value !is SearchUiState.Loading) {
-                delay(10)
-            }
-            assertTrue(viewModel.uiState.value is SearchUiState.Loading)
-        }
+        awaitUiState(viewModel) { it is SearchUiState.Loading }
+        assertTrue(viewModel.uiState.value is SearchUiState.Loading)
 
-        // Trigger the failing response and wait for Error
         responseGate.complete(Unit)
-
-        withTimeout(5000L) {
-            while (viewModel.uiState.value !is SearchUiState.Error) {
-                delay(10)
-            }
-        }
+        awaitUiState(viewModel) { it is SearchUiState.Error }
 
         val finalState = viewModel.uiState.value
         assertTrue(finalState is SearchUiState.Error)
-        // Ensure loading is no longer the current state
         assertTrue(finalState !is SearchUiState.Loading)
     }
 
     @Test
     fun loadMore_withPageCountingLogic_requestsCorrectStartAndLimit() = runBlocking {
         val requestParams = mutableListOf<Pair<Int, Int>>()
-        
+
         val mockEngine = MockEngine { request ->
             val start = request.url.parameters["Start"]?.toInt() ?: 0
             val limit = request.url.parameters["Limit"]?.toInt() ?: SearchViewModel.PAGE_SIZE
             requestParams.add(start to limit)
-            
+
             val products = (start until start + limit).map { index ->
                 "{ \"productName\": \"Product $index\", \"productId\": \"id_$index\" }"
-            }.joinToString(",")
-            
-            respond(
-                content = ByteReadChannel("""
-                    {
-                        "total": 100,
-                        "products": [$products]
-                    }
-                """.trimIndent()),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, "application/json")
-            )
+            }
+
+            respondJson(products = products, total = 100)
         }
-        
-        val viewModel = SearchViewModel(
-            WarehouseRepository(WarehouseApi(mockEngine)),
-            this
-        )
-        
-        // First search
+
+        val viewModel = buildViewModel(mockEngine, this)
+
         viewModel.search("milk")
-        withTimeout(5000L) {
-            while (viewModel.uiState.value !is SearchUiState.Success) {
-                delay(10)
-            }
-        }
-        
-        // Load more twice
+        awaitUiState(viewModel) { it is SearchUiState.Success }
+
         viewModel.loadMore()
-        withTimeout(5000L) {
-            while ((viewModel.uiState.value as? SearchUiState.Success)?.products?.size != 20) {
-                delay(10)
-            }
-        }
-        
+        awaitUiState(viewModel) { (it as? SearchUiState.Success)?.products?.size == 20 }
+
         viewModel.loadMore()
-        withTimeout(5000L) {
-            while ((viewModel.uiState.value as? SearchUiState.Success)?.products?.size != 30) {
-                delay(10)
-            }
-        }
-        
-        // Verify page counting: page 0 (start=0), page 1 (start=10), page 2 (start=20)
+        awaitUiState(viewModel) { (it as? SearchUiState.Success)?.products?.size == 30 }
+
         assertEquals(listOf(0 to 10, 10 to 10, 20 to 10), requestParams)
     }
     
@@ -395,65 +286,81 @@ class SearchViewModelTest {
     @Test
     fun loadMore_withDuplicateProductIds_filtersDuplicatesFromNewPage() = runBlocking {
         var callCount = 0
-        
-        val mockEngine = MockEngine { request ->
+
+        val mockEngine = MockEngine { _ ->
             callCount++
-            
+
             val products = if (callCount == 1) {
-                // First call: return products 0-9
                 (0 until 10).map { index ->
                     "{ \"productName\": \"Product $index\", \"productId\": \"id_$index\" }"
-                }.joinToString(",")
+                }
             } else {
-                // Second call: API returns overlapping data (8, 9, 10, 11, ...) - simulating API bug
-                // Returns ids: 8, 9, 10, 11, 12, 13, 14, 15, 16, 17
                 (8 until 18).map { index ->
                     "{ \"productName\": \"Product $index\", \"productId\": \"id_$index\" }"
-                }.joinToString(",")
+                }
             }
-            
-            respond(
-                content = ByteReadChannel("""
-                    {
-                        "total": 100,
-                        "products": [$products]
-                    }
-                """.trimIndent()),
-                status = HttpStatusCode.OK,
-                headers = headersOf(HttpHeaders.ContentType, "application/json")
-            )
+
+            respondJson(products = products, total = 100)
         }
-        
-        val viewModel = SearchViewModel(
-            WarehouseRepository(WarehouseApi(mockEngine)),
-            this
-        )
-        
+
+        val viewModel = buildViewModel(mockEngine, this)
+
         viewModel.search("milk")
-        withTimeout(5000L) {
-            while (viewModel.uiState.value !is SearchUiState.Success) {
-                delay(10)
-            }
-        }
-        
+        awaitUiState(viewModel) { it is SearchUiState.Success }
+
         var successState = viewModel.uiState.value as SearchUiState.Success
         assertEquals(10, successState.products.size)
-        
-        // Load more - should filter out duplicate ids (8, 9)
+
         viewModel.loadMore()
-        withTimeout(5000L) {
-            while ((viewModel.uiState.value as? SearchUiState.Success)?.products?.size != 18) {
-                delay(10)
-            }
-        }
-        
+        awaitUiState(viewModel) { (it as? SearchUiState.Success)?.products?.size == 18 }
+
         successState = viewModel.uiState.value as SearchUiState.Success
-        // Should have 10 original + 8 new (10-17 after filtering out duplicates 8,9) = 18
         assertEquals(18, successState.products.size)
-        // Verify no duplicate ids
         val ids = successState.products.mapNotNull { it.productId }
         assertEquals(ids.size, ids.toSet().size)
     }
+
+    private fun buildViewModel(mockEngine: MockEngine, scope: CoroutineScope): SearchViewModel {
+        return SearchViewModel(
+            WarehouseRepository(WarehouseApi(mockEngine)),
+            scope
+        )
+    }
+
+    private suspend fun awaitUiState(
+        viewModel: SearchViewModel,
+        timeoutMs: Long = 5000L,
+        predicate: (SearchUiState) -> Boolean
+    ) {
+        withTimeout(timeoutMs) {
+            while (!predicate(viewModel.uiState.value)) {
+                delay(10)
+            }
+        }
+    }
+
+    private fun mockSearchEngine(
+        products: List<String>,
+        total: Int = products.size
+    ): MockEngine = MockEngine {
+        respondJson(products = products, total = total)
+    }
+
+    private fun MockRequestHandleScope.respondJson(
+        products: List<String>,
+        total: Int = products.size
+    ) = respond(
+        content = ByteReadChannel(
+            """
+            {
+                "total": $total,
+                "products": [${products.joinToString(",")}]
+            }
+            """.trimIndent()
+        ),
+        status = HttpStatusCode.OK,
+        headers = headersOf(HttpHeaders.ContentType, "application/json")
+    )
 
 }
 
