@@ -49,7 +49,6 @@ The project includes unit tests for the shared logic, especially for:
 - search ViewModel behavior
 - pagination behavior
 - empty/error states
-- duplicate filtering
 - repository mapping from API responses to domain models
 - product detail flow
 

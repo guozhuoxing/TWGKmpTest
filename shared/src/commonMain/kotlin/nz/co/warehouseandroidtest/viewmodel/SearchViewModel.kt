@@ -120,7 +120,7 @@ class SearchViewModel(
                 val result = fetchProductsPage(lastQuery, start = start, limit = requestedLimit)
                 AppLogger.debug("SearchViewModel: Page $currentPage - requested start=$start, limit=$requestedLimit, got ${result.products.size} items, total=${result.total}")
 
-                val merged = mergeWithoutDuplicates(currentProducts, result.products)
+                val merged = currentProducts + result.products
                 hasMorePages = result.total > start + result.products.size
                 _uiState.value = SearchUiState.Success(merged)
             } catch (e: Exception) {
@@ -140,12 +140,6 @@ class SearchViewModel(
         is SearchUiState.Success -> state.products
         is SearchUiState.LoadingMore -> state.products
         else -> emptyList()
-    }
-
-    private fun mergeWithoutDuplicates(currentProducts: List<Product>, newProducts: List<Product>): List<Product> {
-        val currentIds = currentProducts.mapNotNull { it.productId }.toSet()
-        val uniqueNewProducts = newProducts.filter { it.productId !in currentIds }
-        return currentProducts + uniqueNewProducts
     }
 
     private suspend fun fetchProductsPage(

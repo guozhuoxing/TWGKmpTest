@@ -285,43 +285,6 @@ class SearchViewModelTest {
         assertEquals(listOf("milk:0", "apple:0"), requestParams)
     }
     
-    @Test
-    fun loadMore_withDuplicateProductIds_filtersDuplicatesFromNewPage() = runBlocking {
-        var callCount = 0
-
-        val mockEngine = MockEngine { _ ->
-            callCount++
-
-            val products = if (callCount == 1) {
-                (0 until 10).map { index ->
-                    "{ \"productName\": \"Product $index\", \"productId\": \"id_$index\" }"
-                }
-            } else {
-                (8 until 18).map { index ->
-                    "{ \"productName\": \"Product $index\", \"productId\": \"id_$index\" }"
-                }
-            }
-
-            respondJson(products = products, total = 100)
-        }
-
-        val viewModel = buildViewModel(mockEngine, this)
-
-        viewModel.search("milk")
-        awaitUiState(viewModel) { it is SearchUiState.Success }
-
-        var successState = viewModel.uiState.value as SearchUiState.Success
-        assertEquals(10, successState.products.size)
-
-        viewModel.loadMore()
-        awaitUiState(viewModel) { (it as? SearchUiState.Success)?.products?.size == 18 }
-
-        successState = viewModel.uiState.value as SearchUiState.Success
-        assertEquals(18, successState.products.size)
-        val ids = successState.products.mapNotNull { it.productId }
-        assertEquals(ids.size, ids.toSet().size)
-    }
-
     private fun buildViewModel(mockEngine: MockEngine, scope: CoroutineScope): SearchViewModel {
         return SearchViewModel(
             WarehouseRepository(WarehouseApi(mockEngine)),
