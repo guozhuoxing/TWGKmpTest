@@ -6,6 +6,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -27,10 +28,11 @@ private fun DefaultProductImage(modifier: Modifier = Modifier) {
             .background(MaterialTheme.colors.primary.copy(alpha = 0.08f)),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "No Image",
-            color = MaterialTheme.colors.primary.copy(alpha = 0.7f),
-            style = MaterialTheme.typography.caption
+        Icon(
+            imageVector = Icons.Filled.Image,
+            contentDescription = "Placeholder image",
+            tint = MaterialTheme.colors.primary.copy(alpha = 0.65f),
+            modifier = Modifier.size(48.dp)
         )
     }
 }
@@ -71,6 +73,9 @@ fun ProductDetailScreen(viewModel: ProductDetailViewModelContract, productId: St
                                 contentDescription = product.productName,
                                 modifier = Modifier.fillMaxWidth().height(220.dp).clip(RoundedCornerShape(WarehouseSpacing.lg)),
                                 contentScale = ContentScale.Fit,
+                                onLoading = {
+                                    DefaultProductImage(modifier = Modifier.fillMaxWidth().height(220.dp))
+                                },
                                 onFailure = {
                                     DefaultProductImage(modifier = Modifier.fillMaxWidth().height(220.dp))
                                 }

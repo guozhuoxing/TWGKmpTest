@@ -18,6 +18,8 @@ import io.kamel.image.KamelImage
 import io.kamel.image.asyncPainterResource
 import nz.co.warehouseandroidtest.data.Product
 import nz.co.warehouseandroidtest.ui.theme.WarehouseSpacing
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Image
 import nz.co.warehouseandroidtest.viewmodel.SearchUiState
 import nz.co.warehouseandroidtest.viewmodel.SearchViewModelContract
 
@@ -138,10 +140,11 @@ private fun DefaultProductImage(modifier: Modifier = Modifier) {
             .background(MaterialTheme.colors.primary.copy(alpha = 0.08f)),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "No Image",
-            color = MaterialTheme.colors.primary.copy(alpha = 0.65f),
-            style = MaterialTheme.typography.caption
+        Icon(
+            imageVector = Icons.Filled.Image,
+            contentDescription = "Placeholder image",
+            tint = MaterialTheme.colors.primary.copy(alpha = 0.65f),
+            modifier = Modifier.size(28.dp)
         )
     }
 }
@@ -165,6 +168,9 @@ fun ProductItem(product: Product, onClick: (String) -> Unit) {
                     contentDescription = product.productName,
                     modifier = imageModifier,
                     contentScale = ContentScale.Fit,
+                    onLoading = {
+                        DefaultProductImage(modifier = imageModifier)
+                    },
                     onFailure = {
                         DefaultProductImage(modifier = imageModifier)
                     }
