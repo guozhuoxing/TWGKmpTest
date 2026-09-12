@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import nz.co.warehouseandroidtest.getPlatformName
 import nz.co.warehouseandroidtest.data.Product
 import nz.co.warehouseandroidtest.logging.AppLogger
 import nz.co.warehouseandroidtest.repository.WarehouseRepository
@@ -25,6 +26,7 @@ interface SearchViewModelContract {
     val uiState: StateFlow<SearchUiState>
     fun search(query: String)
     fun retryLastSearch()
+    fun initLogin()
 }
 
 /**
@@ -43,10 +45,25 @@ class SearchViewModel(
     override val uiState: StateFlow<SearchUiState> = _uiState.asStateFlow()
     private val activeScope = scope ?: CoroutineScope(SupervisorJob() + dispatcher)
     private var lastQuery: String = ""
+    private var hasLoggedIn = false
 
     fun clear() {
         if (scope == null) {
             activeScope.cancel()
+        }
+    }
+
+    override fun initLogin() {
+        if (hasLoggedIn) return
+        activeScope.launch(dispatcher) {
+            try {
+                AppLogger.debug("SearchViewModel: Initiating login token retrieval")
+                repository.login(getPlatformName())
+                hasLoggedIn = true
+                AppLogger.debug("SearchViewModel: Login successful, token retained")
+            } catch (e: Exception) {
+                AppLogger.error("SearchViewModel: Login failed: ${e.message}")
+            }
         }
     }
 

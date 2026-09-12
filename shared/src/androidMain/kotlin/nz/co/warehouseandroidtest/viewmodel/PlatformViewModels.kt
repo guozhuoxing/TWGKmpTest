@@ -28,6 +28,10 @@ class PlatformSearchViewModel(
     override fun retryLastSearch() {
         delegate.retryLastSearch()
     }
+
+    override fun initLogin() {
+        delegate.initLogin()
+    }
 }
 
 /**

@@ -23,6 +23,8 @@ class WarehouseApi(
     val engine: io.ktor.client.engine.HttpClientEngine? = null,
     val config: ApiConfig = ApiConfig()
 ) {
+    private var twlToken: String? = null
+
     private val client = if (engine != null) {
         HttpClient(engine) {
             configureClient()
@@ -55,12 +57,22 @@ class WarehouseApi(
         }
     }
 
+    suspend fun login(device: String) {
+        val response = client.get("${config.baseUrl}/Login.json") {
+            header("Authorization", "Guest")
+            header("X-TWL-Device", device)
+            header("Ocp-Apim-Subscription-Key", config.subscriptionKey)
+        }
+        twlToken = response.headers["X-TWL-Token"]
+    }
+
     suspend fun searchProducts(query: String, start: Int = 0, limit: Int = 20): SearchResult {
         return client.get("${config.baseUrl}/Search.json") {
             parameter("Search", query)
             parameter("Start", start)
             parameter("Limit", limit)
             header("Ocp-Apim-Subscription-Key", config.subscriptionKey)
+            twlToken?.let { header("X-TWL-Token", it) }
         }.body()
     }
 
@@ -68,6 +80,7 @@ class WarehouseApi(
         return client.get("${config.baseUrl}/Product.json") {
             parameter("ProductId", productId)
             header("Ocp-Apim-Subscription-Key", config.subscriptionKey)
+            twlToken?.let { header("X-TWL-Token", it) }
         }.body()
     }
 }

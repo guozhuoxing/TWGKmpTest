@@ -28,6 +28,10 @@ fun SearchScreen(viewModel: SearchViewModelContract, onProductClick: (String) ->
     var query by remember { mutableStateOf("") }
     val uiState by viewModel.uiState.collectAsState()
 
+    LaunchedEffect(Unit) {
+        viewModel.initLogin()
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()

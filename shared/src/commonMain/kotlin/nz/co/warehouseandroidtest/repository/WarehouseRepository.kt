@@ -15,6 +15,10 @@ class WarehouseRepository(private var api: WarehouseApi) {
         api = WarehouseApi(config = api.config)
     }
 
+    suspend fun login(device: String) {
+        api.login(device)
+    }
+
     suspend fun searchProducts(query: String, start: Int = 0): SearchResult {
         return api.searchProducts(query, start)
     }
