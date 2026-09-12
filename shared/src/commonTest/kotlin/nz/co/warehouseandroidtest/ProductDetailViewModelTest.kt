@@ -31,7 +31,7 @@ class ProductDetailViewModelTest {
     @Test
     fun loadProductDetail_whenProductExists_shouldEmitLoadingThenSuccess() = runBlocking {
         val responseGate = CompletableDeferred<Unit>()
-        val mockEngine = MockEngine { _ ->
+        val mockEngine = MockEngine {
             responseGate.await()
             respond(
                 content = ByteReadChannel(
@@ -78,7 +78,7 @@ class ProductDetailViewModelTest {
     @Test
     fun loadProductDetail_whenProductIsMissing_shouldEmitLoadingThenError() = runBlocking {
         val responseGate = CompletableDeferred<Unit>()
-        val mockEngine = MockEngine { _ ->
+        val mockEngine = MockEngine {
             responseGate.await()
             respond(
                 content = ByteReadChannel(
@@ -119,7 +119,7 @@ class ProductDetailViewModelTest {
     @Test
     fun loadProductDetail_whenRequestFails_shouldEmitLoadingThenError() = runBlocking {
         val responseGate = CompletableDeferred<Unit>()
-        val mockEngine = MockEngine { _ ->
+        val mockEngine = MockEngine {
             responseGate.await()
             respond(
                 content = "Error",

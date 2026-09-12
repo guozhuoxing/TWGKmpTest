@@ -17,7 +17,7 @@ class WarehouseRepositoryTest {
 
     @Test
     fun testSearchProductsSuccess() = runTest {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = MockEngine {
             respond(
                 content = ByteReadChannel("""
                     {
@@ -48,7 +48,7 @@ class WarehouseRepositoryTest {
 
     @Test
     fun testGetProductDetailSuccess() = runTest {
-        val mockEngine = MockEngine { request ->
+        val mockEngine = MockEngine {
             respond(
                 content = ByteReadChannel("""
                     {

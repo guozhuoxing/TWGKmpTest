@@ -30,6 +30,8 @@ import kotlin.test.assertTrue
 @OptIn(ExperimentalCoroutinesApi::class)
 class SearchViewModelTest {
 
+    private class SocketTimeoutException(message: String) : RuntimeException(message)
+
     @Test
     fun search_whenQueryIsBlank_shouldNotTriggerRequest() = runBlocking {
         val mockEngine = mockSearchEngine(
@@ -45,7 +47,7 @@ class SearchViewModelTest {
     @Test
     fun search_whenApiReturnsEmptyList_shouldEmitLoadingThenSuccess() = runBlocking {
         val responseGate = CompletableDeferred<Unit>()
-        val mockEngine = MockEngine { _ ->
+        val mockEngine = MockEngine {
             responseGate.await()
             respondJson(products = emptyList(), total = 0)
         }
@@ -68,7 +70,7 @@ class SearchViewModelTest {
     @Test
     fun search_whenApiReturnsSuccess_shouldEmitLoadingThenSuccess() = runBlocking {
         val responseGate = CompletableDeferred<Unit>()
-        val mockEngine = MockEngine { _ ->
+        val mockEngine = MockEngine {
             responseGate.await()
             respondJson(products = listOf("{ \"productName\": \"Milk\", \"productId\": \"123\" }"), total = 1)
         }
@@ -92,7 +94,7 @@ class SearchViewModelTest {
     @Test
     fun search_whenApiFails_shouldEmitLoadingThenError() = runBlocking {
         val responseGate = CompletableDeferred<Unit>()
-        val mockEngine = MockEngine { _ ->
+        val mockEngine = MockEngine {
             responseGate.await()
             respond(
                 content = "Error",
@@ -115,8 +117,8 @@ class SearchViewModelTest {
 
     @Test
     fun search_whenRepositoryThrowsTimeout_shouldEmitFriendlyErrorMessage() = runBlocking {
-        val mockEngine = MockEngine { _ ->
-            throw java.net.SocketTimeoutException("Request timed out")
+        val mockEngine = MockEngine {
+            throw SocketTimeoutException("Request timed out")
         }
 
         val viewModel = buildViewModel(mockEngine, this)
@@ -135,7 +137,7 @@ class SearchViewModelTest {
     @Test
     fun search_error_showsError_and_loadingCleared() = runBlocking {
         val responseGate = CompletableDeferred<Unit>()
-        val mockEngine = MockEngine { _ ->
+        val mockEngine = MockEngine {
             responseGate.await()
             respond(
                 content = "Error",
@@ -192,7 +194,7 @@ class SearchViewModelTest {
     fun loadMore_doesNotTriggerWhenFirstPageIsSmallerThanPageSize() = runBlocking {
         var callCount = 0
 
-        val mockEngine = MockEngine { _ ->
+        val mockEngine = MockEngine {
             callCount += 1
             val products = (0 until 5).map { index ->
                 "{ \"productName\": \"Product $index\", \"productId\": \"id_$index\" }"
