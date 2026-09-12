@@ -41,36 +41,18 @@ fun SearchScreen(viewModel: SearchViewModelContract, onProductClick: (String) ->
             .background(MaterialTheme.colors.background)
             .padding(WarehouseSpacing.md)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextField(
-                value = query,
-                onValueChange = { query = it },
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(WarehouseSpacing.md),
-                colors = TextFieldDefaults.textFieldColors(
-                    backgroundColor = Color.White,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
-                    cursorColor = MaterialTheme.colors.primary,
-                    textColor = MaterialTheme.colors.onSurface
-                ),
-                placeholder = { Text("Search products...") }
-            )
-            Button(
-                onClick = { viewModel.search(query) },
-                modifier = Modifier.padding(start = WarehouseSpacing.xs),
-                shape = RoundedCornerShape(WarehouseSpacing.md),
-                colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.primary)
-            ) {
-                Text("Search", color = MaterialTheme.colors.onPrimary)
-            }
-        }
+        SearchBar(
+            query = query,
+            onQueryChange = { query = it },
+            onSearch = { viewModel.search(query) }
+        )
 
         Spacer(modifier = Modifier.height(WarehouseSpacing.md))
 
         when (val state = uiState) {
-            is SearchUiState.Loading -> SearchLoadingView(modifier = Modifier.fillMaxSize())
+            is SearchUiState.Loading -> {
+                LoadingState(modifier = Modifier.fillMaxSize())
+            }
             is SearchUiState.LoadingMore, is SearchUiState.Success -> {
                 val products = when (state) {
                     is SearchUiState.LoadingMore -> state.products
@@ -80,58 +62,57 @@ fun SearchScreen(viewModel: SearchViewModelContract, onProductClick: (String) ->
                 val isLoading = state is SearchUiState.LoadingMore
 
                 if (products.isEmpty()) {
-                    Text(
-                        text = "No products found for this search.",
-                        modifier = Modifier.padding(top = WarehouseSpacing.md),
-                        color = MaterialTheme.colors.onBackground.copy(alpha = 0.7f)
-                    )
+                    EmptyState()
                 } else {
-                    val listState = rememberLazyListState()
-                    
-                    LaunchedEffect(listState, isLoading) {
-                        snapshotFlow { 
-                            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
-                            val totalItems = products.size + (if (isLoading) 1 else 0)
-                            lastVisibleIndex to totalItems
-                        }
-                            .collect { (lastIndex, total) ->
-                                if (lastIndex >= total - 2 && !isLoading && products.isNotEmpty()) {
-                                    viewModel.loadMore()
-                                }
-                            }
-                    }
-                    
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(WarehouseSpacing.xs),
-                        state = listState
-                    ) {
-                        items(products.size) { index ->
-                            ProductItem(products[index], onProductClick)
-                        }
-                        if (isLoading) {
-                            item(key = "loading_footer") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = WarehouseSpacing.md),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(color = MaterialTheme.colors.primary)
-                                }
-                            }
-                        }
-                    }
+                    ProductList(
+                        products = products,
+                        isLoading = isLoading,
+                        onLoadMore = { viewModel.loadMore() },
+                        onProductClick = onProductClick
+                    )
                 }
             }
             is SearchUiState.Error -> SearchErrorView(message = state.message)
-            else -> Text("Enter a search term to begin.", color = MaterialTheme.colors.onBackground.copy(alpha = 0.7f))
+            else -> EmptyState(message = "Enter a search term to begin.")
         }
     }
 }
 
 @Composable
-private fun SearchLoadingView(modifier: Modifier = Modifier) {
+private fun SearchBar(
+    query: String,
+    onQueryChange: (String) -> Unit,
+    onSearch: () -> Unit
+) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        TextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier.weight(1f),
+            shape = RoundedCornerShape(WarehouseSpacing.md),
+            colors = TextFieldDefaults.textFieldColors(
+                backgroundColor = Color.White,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+                cursorColor = MaterialTheme.colors.primary,
+                textColor = MaterialTheme.colors.onSurface
+            ),
+            placeholder = { Text("Search products...") }
+        )
+        Button(
+            onClick = onSearch,
+            modifier = Modifier.padding(start = WarehouseSpacing.xs),
+            shape = RoundedCornerShape(WarehouseSpacing.md),
+            colors = ButtonDefaults.buttonColors(backgroundColor = MaterialTheme.colors.primary)
+        ) {
+            Text("Search", color = MaterialTheme.colors.onPrimary)
+        }
+    }
+}
+
+@Composable
+private fun LoadingState(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
@@ -140,6 +121,60 @@ private fun SearchLoadingView(modifier: Modifier = Modifier) {
             CircularProgressIndicator(color = MaterialTheme.colors.primary)
             Spacer(modifier = Modifier.height(WarehouseSpacing.sm))
             Text("Loading products...", color = MaterialTheme.colors.onBackground)
+        }
+    }
+}
+
+@Composable
+private fun EmptyState(message: String = "No products found for this search.") {
+    Text(
+        text = message,
+        modifier = Modifier.padding(top = WarehouseSpacing.md),
+        color = MaterialTheme.colors.onBackground.copy(alpha = 0.7f)
+    )
+}
+
+@Composable
+private fun ProductList(
+    products: List<Product>,
+    isLoading: Boolean,
+    onLoadMore: () -> Unit,
+    onProductClick: (String) -> Unit
+) {
+    val listState = rememberLazyListState()
+
+    LaunchedEffect(listState, isLoading) {
+        snapshotFlow {
+            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            val totalItems = products.size + (if (isLoading) 1 else 0)
+            lastVisibleIndex to totalItems
+        }
+            .collect { (lastIndex, total) ->
+                if (lastIndex >= total - 2 && !isLoading && products.isNotEmpty()) {
+                    onLoadMore()
+                }
+            }
+    }
+
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(WarehouseSpacing.xs),
+        state = listState
+    ) {
+        items(products.size) { index ->
+            ProductItem(products[index], onProductClick)
+        }
+        if (isLoading) {
+            item(key = "loading_footer") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = WarehouseSpacing.md),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(color = MaterialTheme.colors.primary)
+                }
+            }
         }
     }
 }
