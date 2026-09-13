@@ -105,6 +105,11 @@ org.gradle.java.home=/Users/your-user/Library/Java/JavaVirtualMachines/jbr-17.0.
 
 This submission is implemented as a Kotlin Multiplatform app with Android and iOS support, MVVM architecture, paginated search, and unit-test coverage.
 
+## Known Issues
+
+1. The search API can return duplicate products across results because the backend does not guarantee `productId` deduplication.
+2. Some product images do not render because certain image URLs returned by the API are invalid or unavailable.
+
 ## Notes
 
 The goal of the implementation is to keep the business logic stable and reusable across platforms while keeping Android/iOS-specific concerns isolated in their respective entry modules.
