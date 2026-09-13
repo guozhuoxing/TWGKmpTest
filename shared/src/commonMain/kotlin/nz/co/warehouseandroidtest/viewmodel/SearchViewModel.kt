@@ -153,7 +153,14 @@ class SearchViewModel(
 
         while (attempt <= maxRetries) {
             try {
-                return repository.searchProducts(query, start, limit)
+                val result = repository.searchProducts(query, start, limit)
+                AppLogger.debug(
+                    "SearchViewModel: Response query='$query', start=$start, limit=$limit, " +
+                        "total=${result.total}, products=${result.products.joinToString { product ->
+                            "{id=${product.productId}, name=${product.productName}, price=${product.priceInfo?.price}, imageUrls=${product.imageUrls}, productImageUrl=${product.productImageUrl}}"
+                        }}"
+                )
+                return result
             } catch (error: Throwable) {
                 lastError = error
                 if (attempt == maxRetries || !isTransientRequestError(error)) {
@@ -185,4 +192,3 @@ class SearchViewModel(
         }
     }
 }
-

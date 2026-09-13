@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import io.kamel.image.KamelImage
 import io.kamel.image.asyncPainterResource
 import nz.co.warehouseandroidtest.data.Product
+import nz.co.warehouseandroidtest.logging.AppLogger
 import nz.co.warehouseandroidtest.ui.theme.WarehouseSpacing
 import nz.co.warehouseandroidtest.viewmodel.SearchUiState
 import nz.co.warehouseandroidtest.viewmodel.SearchViewModel
@@ -252,6 +253,9 @@ fun ProductItem(product: Product, onClick: (String) -> Unit) {
                         DefaultProductImage(modifier = imageModifier)
                     },
                     onFailure = {
+                        AppLogger.error(
+                            "SearchScreen: Image load failed for productId=${product.productId}, imageUrl=$imageUrl"
+                        )
                         DefaultProductImage(modifier = imageModifier)
                     }
                 )
