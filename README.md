@@ -6,110 +6,57 @@ This project is a Kotlin Multiplatform (KMP) mobile application for browsing War
 
 The app implements a product search flow with pagination, product detail viewing, and clean state handling using MVVM architecture. The same core logic is shared across Android and iOS, while the platform-specific layers handle native runtime integration and UI hosting.
 
-## Features
+## Project architecture
 
-- Product search by keyword
-- Paginated product list loading
-- Product details screen with image, description, price, and special offers
-- Loading, empty, and error state handling
-- Shared, testable data/repository layer
-- Unit tests covering repository and ViewModel logic
+- Shared KMP layer for business logic and data handling
+- Repository layer for orchestration and API responses
+- ViewModel layer for state management and UI updates
+- Compose UI layer for Android/iOS presentation
+- MVVM-based structure to keep the app maintainable and testable
 
-## Architecture
+## Implemented features
 
-### MVVM + Repository Pattern
+- Product search with result list display
+- Product detail view showing product image, price, description, and available specials
+- Pagination support for loading more search results as the user scrolls
+- Reset and refresh behavior for each new search
+- Rich text and plain text description handling
+- Loading and error states for asynchronous API calls
+- Placeholder fallback for broken or unavailable images
 
-The application follows a standard MVVM structure with a clear separation between UI, state, and data access:
+## Description handling
 
-- `androidApp/` - Android native entry point and platform integration
-- `iosApp/` - iOS native app entry and runtime bridge
-- `shared/` - shared KMP codebase
-  - `api/` - API transport layer, HTTP client, request/response handling
-  - `repository/` - data orchestration and domain mapping
-  - `viewmodel/` - ViewModel state and screen logic
-  - `ui/` - Compose-based shared UI screens
-  - `data/` - domain models and DTO conversion logic
+The backend product description can be returned as either HTML-rich content or plain text. The app detects the format automatically and renders the content in a user-friendly way:
 
-This design keeps the app maintainable and testable while allowing the same business rules to run on both Android and iOS.
-
-## Paginated Search
-
-The search screen loads product data in pages using the `Start` and `Limit` query parameters. Pagination is triggered as the user reaches the end of the current list, and the app automatically stops when the backend indicates there are no further results.
-
-Important behaviors:
-
-- each new search resets page state
-- pagination continues only when more results remain
-- end-of-list detection is based on whether the server response indicates additional items
+- HTML content: formatted for readability with bold, line breaks, and list styling
+- Plain text: displayed directly without unnecessary formatting
 
 ## Testing
 
-The project includes unit tests for the shared logic, especially for:
+I added unit tests covering:
 
-- search ViewModel behavior
-- pagination behavior
+- search behavior
+- pagination logic
 - empty/error states
-- repository mapping from API responses to domain models
-- product detail flow
+- repository mapping
 
-The shared tests are executed under the KMP `commonTest` and Android unit test targets, and the project validates successfully under the configured Gradle setup.
+## Known issues
 
-## Tech Stack
+- The backend does not guarantee product ID de-duplication across loaded pages
+- Some product image URLs returned by the API are invalid or unavailable
+- Product descriptions are provided as HTML in some cases, so they need formatting before display
 
-- Kotlin Multiplatform
-- Jetpack Compose
-- Kotlin Coroutines
-- Ktor
-- Kotlinx Serialization
-- MVVM architecture
-- Android lifecycle + Compose integration
-- iOS framework generation through Kotlin/Native
 
-## Local Setup
+## iOS simulator
 
-### Prerequisites
+The app has been tested on both Android and iOS. To run it in the iOS simulator, the local machine must have the required Apple tooling installed, including Xcode and the iOS simulator runtime. If the simulator does not start correctly, install the required Xcode/iOS components and simulator support before running the app.
 
-- JDK 17
-- Android Studio
-- Xcode + iOS simulator runtime (for iOS development on macOS)
 
-### Android build
 
-```bash
-export JAVA_HOME=/Users/your-user/Library/Java/JavaVirtualMachines/jbr-17.0.14/Contents/Home
-./gradlew :androidApp:assembleDebug
-```
-
-### iOS simulator
-
-To run the app in the iOS simulator, make sure the following are installed on macOS:
-
-- Xcode
-- Xcode Command Line Tools
-- iOS Simulator runtime
-- the required Kotlin Multiplatform / Compose tooling for iOS builds
-
-Note: the project has already been tested on both Android and iOS. For iOS simulator execution, the environment must have the Apple developer tooling installed and properly configured. In many cases, this means installing Xcode and the iOS simulator runtime as a required local prerequisite.
-
-### Local Gradle JVM setting
-
-If your system uses a different Java installation, set it locally in `gradle.properties` or as `JAVA_HOME` rather than committing it to source control.
-
-Example:
-
-```properties
-org.gradle.java.home=/Users/your-user/Library/Java/JavaVirtualMachines/jbr-17.0.14/Contents/Home
-```
-
-## Project Status
+## Project status
 
 This submission is implemented as a Kotlin Multiplatform app with Android and iOS support, MVVM architecture, paginated search, and unit-test coverage.
 
-## Known Issues
-
-1. The search API can return duplicate products across results because the backend does not guarantee `productId` deduplication.
-2. Some product images do not render because certain image URLs returned by the API are invalid or unavailable.
-
 ## Notes
 
-The goal of the implementation is to keep the business logic stable and reusable across platforms while keeping Android/iOS-specific concerns isolated in their respective entry modules.
+The implementation keeps the shared business logic reusable across platforms while isolating platform-specific runtime concerns in their respective app modules.
