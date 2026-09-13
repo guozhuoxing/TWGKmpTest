@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import nz.co.warehouseandroidtest.data.Product
+import nz.co.warehouseandroidtest.logging.AppLogger
 import nz.co.warehouseandroidtest.repository.WarehouseRepository
 
 /**
@@ -44,6 +45,14 @@ class ProductDetailViewModel(
             try {
                 _uiState.value = ProductDetailUiState.Loading
                 val product = repository.getProductDetail(productId)
+                AppLogger.debug(
+                    "ProductDetailViewModel: UI product for productId=$productId -> " +
+                        if (product != null) {
+                            "{id=${product.productId}, name=${product.productName}, description=${product.productDescription}, price=${product.priceInfo?.price}, image=${product.productImageUrl}}"
+                        } else {
+                            "null"
+                        }
+                )
                 if (product != null) {
                     _uiState.value = ProductDetailUiState.Success(product)
                 } else {
@@ -55,4 +64,3 @@ class ProductDetailViewModel(
         }
     }
 }
-
