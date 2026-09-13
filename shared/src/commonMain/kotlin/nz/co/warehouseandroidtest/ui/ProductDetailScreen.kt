@@ -1,6 +1,8 @@
 package nz.co.warehouseandroidtest.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
@@ -66,6 +68,23 @@ private fun ProductErrorView(message: String, onRetry: () -> Unit) {
 }
 
 @Composable
+private fun ProductDetailLoadingView() {
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            CircularProgressIndicator(color = MaterialTheme.colors.primary)
+            Spacer(modifier = Modifier.height(WarehouseSpacing.sm))
+            Text(
+                text = "Loading product details...",
+                color = MaterialTheme.colors.onBackground
+            )
+        }
+    }
+}
+
+@Composable
 fun ProductDetailScreen(viewModel: ProductDetailViewModelContract, productId: String, onBack: () -> Unit) {
     val uiState by viewModel.uiState.collectAsState()
 
@@ -93,7 +112,10 @@ fun ProductDetailScreen(viewModel: ProductDetailViewModelContract, productId: St
                 is ProductDetailUiState.Success -> {
                     val product = state.product
                     val imageUrl = product.imageUrls.firstOrNull() ?: product.productImageUrl
-                    Column {
+                    val description = remember(product.productDescription) {
+                        formatProductDescription(product.productDescription)
+                    }
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         if (!imageUrl.isNullOrEmpty()) {
                             KamelImage(
                                 resource = asyncPainterResource(data = imageUrl),
@@ -115,7 +137,7 @@ fun ProductDetailScreen(viewModel: ProductDetailViewModelContract, productId: St
                         Spacer(modifier = Modifier.height(WarehouseSpacing.xs))
                         Text(text = "Price: $${product.priceInfo?.price ?: 0.0}", style = MaterialTheme.typography.h5, color = MaterialTheme.colors.primaryVariant)
                         Spacer(modifier = Modifier.height(WarehouseSpacing.md))
-                        Text(text = product.productDescription ?: "No description available.", style = MaterialTheme.typography.body1, color = MaterialTheme.colors.onBackground)
+                        Text(text = description, style = MaterialTheme.typography.body1, color = MaterialTheme.colors.onBackground)
                         if (product.isClearance) {
                             Spacer(modifier = Modifier.height(WarehouseSpacing.sm))
                             Surface(
@@ -136,7 +158,8 @@ fun ProductDetailScreen(viewModel: ProductDetailViewModelContract, productId: St
                     message = state.message,
                     onRetry = { viewModel.loadProductDetail(productId) }
                 )
-                else -> {}
+                ProductDetailUiState.Loading,
+                ProductDetailUiState.Idle -> ProductDetailLoadingView()
             }
         }
     }
