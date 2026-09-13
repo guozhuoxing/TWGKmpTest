@@ -9,7 +9,7 @@ The app implements a product search flow with pagination, product detail viewing
 ## Project architecture
 
 - Shared KMP layer for business logic and data handling
-- Repository layer for orchestration and API responses
+- Repository layer for API communication and data mapping
 - ViewModel layer for state management and UI updates
 - Compose UI layer for Android/iOS presentation
 - MVVM-based structure to keep the app maintainable and testable

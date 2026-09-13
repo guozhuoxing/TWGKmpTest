@@ -4,6 +4,7 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import nz.co.warehouseandroidtest.logging.AppLogger
 
 // ProductDescriptionFormatter converts backend product descriptions into a Compose-friendly
 // AnnotatedString so the detail screen can render both plain text and HTML-rich product text.
@@ -12,14 +13,32 @@ private val htmlTagRegex = Regex("<[^>]+>")
 private val htmlEntityRegex = Regex("&[A-Za-z#0-9]+;")
 private val htmlTokenRegex = Regex("(?s)<[^>]+>|[^<]+")
 private val whitespaceRegex = Regex("\\s+")
+private const val missingDescriptionText = "No description available."
 
 // Formats the raw description from the backend.
 // If the value is empty, we show a fallback message.
 // If it looks like HTML, we parse and render it as readable text instead of raw markup.
-internal fun formatProductDescription(description: String?): AnnotatedString {
+internal fun formatProductDescription(
+    description: String?,
+    productId: String? = null
+): AnnotatedString {
     val value = description?.trim().orEmpty()
-    if (value.isEmpty()) return AnnotatedString("No description available.")
-    return if (looksLikeHtml(value)) value.toAnnotatedHtmlDescription() else AnnotatedString(value)
+    if (value.isEmpty()) {
+        AppLogger.debug(
+            "ProductDescriptionFormatter: No description available for productId=${productId ?: "unknown"}; raw description was blank or null"
+        )
+        return AnnotatedString(missingDescriptionText)
+    }
+
+    val formatted = if (looksLikeHtml(value)) value.toAnnotatedHtmlDescription() else AnnotatedString(value)
+    if (formatted.text.isBlank()) {
+        AppLogger.debug(
+            "ProductDescriptionFormatter: No description available for productId=${productId ?: "unknown"}; formatted text was blank. raw=$value"
+        )
+        return AnnotatedString(missingDescriptionText)
+    }
+
+    return formatted
 }
 
 internal fun looksLikeHtml(value: String): Boolean {

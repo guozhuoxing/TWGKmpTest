@@ -114,7 +114,10 @@ fun ProductDetailScreen(viewModel: ProductDetailViewModelContract, productId: St
                     val product = state.product
                     val imageUrl = product.imageUrls.firstOrNull() ?: product.productImageUrl
                     val description = remember(product.productDescription) {
-                        formatProductDescription(product.productDescription)
+                        formatProductDescription(
+                            description = product.productDescription,
+                            productId = product.productId
+                        )
                     }
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         if (!imageUrl.isNullOrEmpty()) {

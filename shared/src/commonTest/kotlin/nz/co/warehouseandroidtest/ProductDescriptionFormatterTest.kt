@@ -27,4 +27,11 @@ class ProductDescriptionFormatterTest {
         assertEquals("Important\n• One\n• Two\nHome & Garden", result.text)
         assertTrue(result.spanStyles.isNotEmpty())
     }
+
+    @Test
+    fun formatProductDescription_whenHtmlProducesNoVisibleText_returnsFallback() {
+        val result = formatProductDescription("<br><ul></ul>")
+
+        assertEquals("No description available.", result.text)
+    }
 }
