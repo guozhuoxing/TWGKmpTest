@@ -1,4 +1,4 @@
-package nz.co.warehouseandroidtest.ui
+package nz.co.warehouseandroidtest.ui.components
 
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle

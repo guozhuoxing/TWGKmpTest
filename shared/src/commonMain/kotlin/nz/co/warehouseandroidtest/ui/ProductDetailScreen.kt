@@ -18,6 +18,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import io.kamel.image.KamelImage
 import io.kamel.image.asyncPainterResource
+import nz.co.warehouseandroidtest.ui.components.formatProductDescription
 import nz.co.warehouseandroidtest.ui.theme.WarehouseSpacing
 import nz.co.warehouseandroidtest.viewmodel.ProductDetailUiState
 import nz.co.warehouseandroidtest.viewmodel.ProductDetailViewModelContract

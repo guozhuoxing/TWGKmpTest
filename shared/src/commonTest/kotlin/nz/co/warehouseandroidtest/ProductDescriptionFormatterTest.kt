@@ -1,6 +1,6 @@
 package nz.co.warehouseandroidtest
 
-import nz.co.warehouseandroidtest.ui.formatProductDescription
+import nz.co.warehouseandroidtest.ui.components.formatProductDescription
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
