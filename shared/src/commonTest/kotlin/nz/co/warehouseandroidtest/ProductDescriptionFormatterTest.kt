@@ -5,6 +5,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+// ProductDescriptionFormatterTest verifies the formatter used to turn backend product descriptions
+// into readable Compose text for the detail screen.
+// The class name matches the production formatter it covers: ProductDescriptionFormatter.
 class ProductDescriptionFormatterTest {
 
     @Test

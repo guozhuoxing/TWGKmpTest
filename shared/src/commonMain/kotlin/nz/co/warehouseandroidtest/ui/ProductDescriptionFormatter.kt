@@ -5,11 +5,17 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 
+// ProductDescriptionFormatter converts backend product descriptions into a Compose-friendly
+// AnnotatedString so the detail screen can render both plain text and HTML-rich product text.
+// It detects HTML, normalizes spacing, decodes common HTML entities, and applies bold/list styling.
 private val htmlTagRegex = Regex("<[^>]+>")
 private val htmlEntityRegex = Regex("&[A-Za-z#0-9]+;")
 private val htmlTokenRegex = Regex("(?s)<[^>]+>|[^<]+")
 private val whitespaceRegex = Regex("\\s+")
 
+// Formats the raw description from the backend.
+// If the value is empty, we show a fallback message.
+// If it looks like HTML, we parse and render it as readable text instead of raw markup.
 internal fun formatProductDescription(description: String?): AnnotatedString {
     val value = description?.trim().orEmpty()
     if (value.isEmpty()) return AnnotatedString("No description available.")
