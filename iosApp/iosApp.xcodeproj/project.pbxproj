@@ -276,6 +276,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = "${TEAM_ID}";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(SRCROOT)/../shared/build/bin/iosSimulatorArm64/debugFramework",
 					"$(SRCROOT)/../shared/build/bin/iosX64/debugFramework",
